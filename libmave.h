@@ -54,8 +54,6 @@ void m2x2_m2x4_mul(m2x2 a, m2x4 b, m2x4 r);
 void m2x3_add(m2x3 a, m2x3 b, m2x3 r);
 void m2x3_sub(m2x3 a, m2x3 b, m2x3 r);
 void m2x3_vec3_mul(m2x3 a, vec3 b, vec2 r);
-void m2x3_m3x2_mul(m2x3 a, m3x2 b, m2x2 r);
-void m2x3_m3x3_mul(m2x3 a, m3x3 b, m2x3 r);
 
 // helpers
 void print_vec2(vec2 v);

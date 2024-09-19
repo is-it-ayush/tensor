@@ -137,8 +137,6 @@ void m2x2_tests() {
   assert(r3[1][2] == 37.0f);
   assert(r3[1][3] == 44.0f);
 
-  m2x3_m3x3_mul(d2, d4, r2);
-
   printf("m2x2 tests passed\n");
 }
 
@@ -169,12 +167,6 @@ void m2x3_tests() {
   m2x3_vec3_mul(d1, d2, r1);
   assert(r1[0] == 14.0f);
   assert(r1[1] == 32.0f);
-
-  m2x3_m3x2_mul(d1, d3, r2);
-  assert(r2[0][0] == 22.0f);
-  assert(r2[0][1] == 28.0f);
-  assert(r2[1][0] == 49.0f);
-  assert(r2[1][1] == 64.0f);
 
   printf("m2x3 tests passed\n");
 }

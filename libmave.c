@@ -283,122 +283,16 @@ void m2x3_vec3_mul(m2x3 a, vec3 b, vec2 r) {
   sum = _mm_hadd_ps(sum, sum);
   _mm_store_ss(r+1, sum);
 }
-// todo: optimize...
-void m2x3_m3x2_mul(m2x3 a, m3x2 b, m2x2 r) {
-  // a b c     g h   ag+bi+ck ah+bj+cl
-  // d e f  x  i j = dg+ei+fk dh+ej+fl
-  //           k l
-
-  __m256 y0 = _mm256_setzero_ps(), y1 = _mm256_setzero_ps(), y2;
-  __m128 lo, hi, sum, zero = _mm_setzero_ps();
-  m2x3 b_t;
-
-  // Transpose b
-  m3x2_transpose(b, b_t); // 0 0 l j h k i g
-
-  y0 = _mm256_maskload_ps(a[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1));   // 0 0 f e d c b a
-  y1 = _mm256_maskload_ps(b_t[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1)); // 0 0 l j h k i g
-
-  y2 = _mm256_mul_ps(y0, y1); // 0 0 fl ej dh ck bi ag
-  y2 = _mm256_permutevar8x32_ps(y2, _mm256_set_epi32(7, 5, 4, 3, 7, 2, 1, 0)); // 0 fl ej dh 0 ck bi ag
-
-  // r[0][0]
-  lo = _mm256_extractf128_ps(y2, 0); // 0 ck bi ag
-  sum = _mm_hadd_ps(lo, zero); // 0 0 ck ag+bi
-  sum = _mm_hadd_ps(sum, sum); // 0 0 0 ag+bi+ck
-  _mm_store_ss(&r[0][0], sum);
-
-  // r[1][1]
-  hi = _mm256_extractf128_ps(y2, 1); // 0 fl ej dh
-  sum = _mm_hadd_ps(hi, zero); // 0 0 fl dh+ej
-  sum = _mm_hadd_ps(sum, sum); // 0 0 0 dh+ej+fl
-  _mm_store_ss(&r[1][1], sum);
-
-  y0 = _mm256_permutevar8x32_ps(y0, _mm256_set_epi32(7, 7, 2, 1, 0, 5, 4, 3)); // 0 0 c b a f e d
-  y2 = _mm256_mul_ps(y0, y1); // 0 0 cl bj ah fk ei dg
-  y2 = _mm256_permutevar8x32_ps(y2, _mm256_set_epi32(7, 5, 4, 3, 7, 2, 1, 0)); // 0 cl bj ah 0 fk ei dg
-
-  // r[1][0]
-  lo = _mm256_extractf128_ps(y2, 0); // 0 fk ei dg
-  sum = _mm_hadd_ps(lo, zero); // 0 0 fk dg+ei
-  sum = _mm_hadd_ps(sum, sum); // 0 0 0 dg+ei+fk
-  _mm_store_ss(&r[1][0], sum);
-
-  // r[0][1]
-  hi = _mm256_extractf128_ps(y2, 1); // 0 cl bj ah
-  sum = _mm_hadd_ps(hi, zero); // 0 0 cl ah+bj
-  sum = _mm_hadd_ps(sum, sum); // 0 0 0 ah+bj+cl
-  _mm_store_ss(&r[0][1], sum);
-}
-void m2x3_m3x3_mul(m2x3 a, m3x3 b, m2x3 r) {
-  // a b c     g h i   ag+bj+cm ah+bk+cn ai+bl+co
-  // d e f  x  j k l = dg+ej+fm dh+ek+fn di+el+fo
-  //           m n o
-
-  __m256 y0 = _mm256_setzero_ps(), y1 = _mm256_setzero_ps(), y2;
-  __m128 lo, hi, sum;
-
-  y0 = _mm256_maskload_ps(a[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1)); // 0 0 f e d c b a
-
-  // o l i n k h m j g
-  // 0 0   f  e  d  c  b  a -- maskload, ymm0
-  // 0 0   n  k  h  m  j  g -- maskload, ymm1
-  // 0 0  fn ek dh cm bj ag -- multiply, ymm2
-  //
-  // 0 fn ek dh 0 cm bj ag -- permute, ymm2
-  // 0 cm bj ag -- extract low, xmm0
-  // cm bj+ag cm bj+ag - hadd, xmm0
-  // bj+ag+cm bj+ag+cm bj+ag+cm bj+ag+cm - hadd, xmm0
-  //
-  // 0 0 0 0 0 0 0 0 -- new zero inited, ymm3
-  // 0 0 0 0 bj+ag+cm bj+ag+cm bj+ag+cm bj+ag+cm -- insertf128, ymm3 (low)
-  // 0 0 0 0 0 0 0 bj+ag+cm -- permute, ymm3
-  //
-  // 0 fn ek dh -- extract high, xmm0
-  // fn ek+dh fn ek+dh - hadd, xmm0
-  // ek+dh+fn ek+dh+fn ek+dh+fn ek+dh+fn - hadd, xmm0
-  //
-  // ek+dh+fn ek+dh+fn ek+dh+fn ek+dh+fn 0 0 0 bg+ag+cm -- insertf128, ymm3 (high)
-  // 0 0 0 0 0 0 ek+dh+fn bg+ag+cm -- permute, ymm3
-  //
-  //
-  // 0  0   f  e   d   c  b  a -- NOP (no instruction since we already have ymm0)
-  // 0  0
-  // 0  0   m  j   g   o  l  i -- permute, ymm1
-  // 0  0  fm ej  dg  co bl ai -- multiply, ymm2
-  // 0 fm  ej dg   0  co bl ai -- permute, ymm2
-  // 0 co bl ai -- extract low, xmm0
-  // co bl+ai co bl+ai -- hadd, xmm0
-  // bl+ai+co bl+ai+co bl+ai+co bl+ai+co -- hadd, xmm0
-  //
-  // bl+ai+co bl+ai+co bl+ai+co bl+ai+co 0 0 ek+dh+fn bg+ag+cm -- insertf128, ymm3 (low)
-  // 0 0 0 0 0 bl+ai+co ek+dh+fn bg+ag+cm -- permute, ymm3
-  //
-  // 0 fm ej dg -- extract high, xmm0
-  // fm ej+dg fm ej+dg -- hadd, xmm0
-  // ej+dg+fm ej+dg+fm ej+dg+fm ej+dg+fm -- hadd, xmm0
-  //
-  // ej+dg+fm ej+dg+fm ej+dg+fm ej+dg+fm 0 bl+ai+co ek+dh+fn bg+ag+cm -- insertf128, ymm3 (high)
-  // 0 0 0 0 0 0 ej+dg+fm bl+ai+co ek+dh+fn bg+ag+cm -- permute, ymm3
-  //
-  // 0 0  f  e   d   c  b  a -- NOP (no instruction since we already have ymm0)
-  //
-  // 0 0  o  l   i   n  k  h --
-  // 0 0 fo el  di  cn bk ah
-
-  // 0 fo el di 0 cn bk ah
-
-}
 
 
 // 2x2 * 2x1 (m2x2_vec2_mul) | 2x2 * 2x2 (m2x2_mul) | 2x2 * 2x3 (m2x2_m2x3_mul) | 2x2 * 2x4 (m2x2_m2x4_mul)
-// 2x3 * 3x1 (m2x3_vec3_mul) | 2x3 * 3x2 (m2x3_m3x2_mul) | 2x3 * 3x3 | 2x3 * 3x4
-// 2x4 * 4x1 | 2x4 * 4x2 | 2x4 * 4x3 | 2x4 * 4x4
-// 3x2 * 2x1
-// 3x3 * 3x1 |   -       | 3x3 * 3x3 |  -
-// 3x4 * 4x1
-// 4x2 * 2x1
-// 4x3 * 3x1
-// 4x4 * 4x1 |   -       |    -      | 4x4 * 4x4
+// 2x3 * 3x1 (m2x3_vec3_mul) |  -                   | -                         | -
+// 2x4 * 4x1 (m2x4_vec4_mul) |  -                   | -                         | -
+// 3x2 * 2x1                 |  -                   | -                         | -
+// 3x3 * 3x1                 |  -                   | 3x3 * 3x3                 |  -
+// 3x4 * 4x1                 |  -                   | -                         | -
+// 4x2 * 2x1                 |  -                   | -                         | -
+// 4x3 * 3x1                 |  -                   | -                         | -
+// 4x4 * 4x1                 |  -                   | -                         | 4x4 * 4x4
 
 // mat * vec | mat * mat | mat * mat | mat * mat
