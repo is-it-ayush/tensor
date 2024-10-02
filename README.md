@@ -32,4 +32,9 @@ with sse & avx instruction extensions. (avx512)
 4x2 * 2x1 (m4x2_vec2_mul) |  -                   | -                    | -
 4x3 * 3x1 (m4x2_vec3_mul) |  -                   | -                    | -
 4x4 * 4x1 (m4x4_vec4_mul) |  -                   | -                    | 4x4 * 4x4 (m4x4_mul)
+
+# transpose operations
+m2x2 (m2x2_transpose)     |  -                   | -                    | -
+m3x3 (m3x3_transpose)     |  -                   | -                    | -
+m4x4 (m4x4_transpose)     |  -                   | -                    | -
 ```

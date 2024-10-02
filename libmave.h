@@ -3,21 +3,18 @@
 #include <xmmintrin.h>
 
 #ifndef ALIGNMENT
-    #define ALIGNMENT(X) __attribute((aligned(X)))
-    #ifdef __AVX__
-        #define MV_SIMD_ALIGN ALIGNMENT(32)
-    #elif __SSE__
-        #define MV_SIMD_ALIGN ALIGNMENT(16)
-    #endif
+#define ALIGNMENT(X) __attribute((aligned(X)))
+#ifdef __AVX__
+#define MV_SIMD_ALIGN ALIGNMENT(32)
+#elif __SSE__
+#define MV_SIMD_ALIGN ALIGNMENT(16)
+#endif
 #endif
 
 typedef float vec2[2];
 typedef float vec3[3];
 typedef float vec4[4];
 
-// Align all of them to 32/16 byte boundaries. The idea is,
-// that even if some values such m3x3 (9), m3x4 (12) & m4x4 (16)
-// are greater than 32 byte alignment.
 
 typedef MV_SIMD_ALIGN vec2 m2x2[2];
 typedef MV_SIMD_ALIGN vec3 m2x3[2];
@@ -31,7 +28,6 @@ typedef MV_SIMD_ALIGN vec2 m4x2[4];
 typedef MV_SIMD_ALIGN vec3 m4x3[4];
 typedef MV_SIMD_ALIGN vec4 m4x4[4];
 
-// vector-vector
 void vec2_add(vec2 a, vec2 b, vec2 r);
 void vec2_sub(vec2 a, vec2 b, vec2 r);
 void vec2_mul(vec2 a, vec2 b, vec2 r);
@@ -47,7 +43,6 @@ void vec4_sub(vec4 a, vec4 b, vec4 r);
 void vec4_mul(vec4 a, vec4 b, vec4 r);
 void vec4_div(vec4 a, vec4 b, vec4 r);
 
-// matrix-matrix
 void m2x2_add(m2x2 a, m2x2 b, m2x2 r);
 void m2x2_sub(m2x2 a, m2x2 b, m2x2 r);
 void m2x2_mul(m2x2 a, m2x2 b, m2x2 r);
