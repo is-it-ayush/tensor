@@ -169,6 +169,33 @@ void m2x4_tests() {
 
   printf("m2x4 tests passed\n");
 }
+void m3x2_tests() {
+  m3x2 d0 = {{1, 2}, {3, 4}, {5, 6}};
+  vec2 d1 = {1, 2};
+  m3x2 r0;
+  vec3 r1;
+
+  m3x2_add(d0, d0, r0);
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 2; j++) {
+      assert(r0[i][j] == 2.0f * d0[i][j]);
+    }
+  }
+
+  m3x2_sub(d0, d0, r0);
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 2; j++) {
+      assert(r0[i][j] == 0.0f);
+    }
+  }
+
+  m3x2_vec2_mul(d0, d1, r1);
+  assert(r1[0] == 5.0f);
+  assert(r1[1] == 11.0f);
+  assert(r1[2] == 17.0f);
+
+  printf("m3x2 tests passed\n");
+}
 void m3x3_tests() {
   m3x3 d0 = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
   vec3 d1 = {1, 2, 3};
@@ -194,7 +221,7 @@ void m3x3_tests() {
   assert(r1[1] == 32.0f);
   assert(r1[2] == 50.0f);
 
-  m3x3_m3x3_mul(d0, d0, r0);
+  m3x3_mul(d0, d0, r0);
   assert(r0[0][0] == 30.0f);
   assert(r0[0][1] == 36.0f);
   assert(r0[0][2] == 42.0f);
@@ -316,7 +343,7 @@ void m4x4_tests() {
   assert(r1[2] == 110.0f);
   assert(r1[3] == 150.0f);
 
-  m4x4_m4x4_mul(d0, d0, r0);
+  m4x4_mul(d0, d0, r0);
   assert(r0[0][0] == 90.0f);
   assert(r0[0][1] == 100.0f);
   assert(r0[0][2] == 110.0f);
@@ -345,6 +372,7 @@ int main() {
   m2x2_tests();
   m2x3_tests();
   m2x4_tests();
+  m3x2_tests();
   m3x3_tests();
   m3x4_tests();
   m4x2_tests();

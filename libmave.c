@@ -241,6 +241,26 @@ void m2x4_vec4_mul(m2x4 a, vec4 b, vec2 r) {
   _mm_maskstore_ps(r, _mm_set_epi32(0,0,-1,-1), _mm_blend_ps(_mm_dp_ps(_mm_load_ps(a[0]), x0, 0b11110001), _mm_dp_ps(_mm_load_ps(a[0]+4), x0, 0b11110010), 0b0010));
 }
 
+void m3x2_add(m3x2 a, m3x2 b, m3x2 r) {
+  _mm256_maskstore_ps(r[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1), _mm256_add_ps(_mm256_maskload_ps(a[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1)), _mm256_maskload_ps(b[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1))));
+}
+void m3x2_sub(m3x2 a, m3x2 b, m3x2 r) {
+    _mm256_maskstore_ps(r[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1), _mm256_sub_ps(_mm256_maskload_ps(a[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1)), _mm256_maskload_ps(b[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1))));
+}
+void m3x2_vec2_mul(m3x2 a, vec2 b, vec3 r) {
+  // a b     x     ax+by
+  // c d  x  y  =  cx+dy
+  // e f           ex+fy
+
+  __m128 x0, x1, x2, x3;
+  x0 = _mm_load_ps(a[0]); // d c b a
+  x1 = _mm_maskload_ps(a[0]+4, _mm_set_epi32(0, 0, -1, -1)); // 0 0 e f
+  x2 = _mm_permutevar_ps(_mm_maskload_ps(b, _mm_set_epi32(0, 0, -1, -1)), _mm_set_epi32(1, 0, 1, 0)); // y x y x
+  x3 = _mm_blend_ps(_mm_blend_ps(_mm_dp_ps(x0, x2, 0b00110001), _mm_dp_ps(x0, x2, 0b11000010), 0b0010), _mm_dp_ps(x1, x2, 0b00110100), 0b0100); // 0 ex+fy cx+dy ax+by
+
+  _mm_maskstore_ps(r, _mm_set_epi32(0,-1,-1,-1), x3);
+}
+
 void m3x3_add(m3x3 a, m3x3 b, m3x3 r) {
   vec3_add(a[0], b[0], r[0]);
   vec3_add(a[1], b[1], r[1]);
@@ -265,7 +285,7 @@ void m3x3_vec3_mul(m3x3 a, vec3 b, vec3 r) {
     x4 = _mm_blend_ps(x4, x3, 0b0100);
     _mm_maskstore_ps(r, _mm_set_epi32(0,-1,-1,-1),x4);
 }
-void m3x3_m3x3_mul(m3x3 a, m3x3 b, m3x3 r) {
+void m3x3_mul(m3x3 a, m3x3 b, m3x3 r) {
   // a b c     j k l     aj+bm+cp ak+bn+cq al+bo+cr
   // d e f  x  m n o  =  dj+em+fp dk+en+fq dl+eo+fr
   // g h i     p q r     gj+hm+ip gk+gn+iq gl+ho+ir
@@ -381,7 +401,7 @@ void m4x4_vec4_mul(m4x4 a, vec4 b, vec4 r) {
   x5 = _mm_blend_ps(_mm_blend_ps(_mm_blend_ps(_mm_dp_ps(x0, x4, 0b11110001), _mm_dp_ps(x1, x4, 0b11110010), 0b0010), _mm_dp_ps(x2, x4, 0b11110100), 0b0100), _mm_dp_ps(x3, x4, 0b11111000), 0b1000); // mw+nx+oy+pz iw+jx+ky+lz ew+fx+gy+hz aw+bx+cy+dz
   _mm_store_ps(r, x5);
 }
-void m4x4_m4x4_mul(m4x4 a, m4x4 b, m4x4 r) {
+void m4x4_mul(m4x4 a, m4x4 b, m4x4 r) {
   // a b c d     1 2 3 4        a1+b5+c9+d13 a2+b6+c10+d14 a3+b7+c11+d15 a4+b8+c12+d16
   // e f g h  x  5 6 7 8     =  e1+f5+g9+h13 e2+f6+g10+h14 e3+f7+g11+h15 e4+f8+g12+h16
   // i j k l     9 10 11 12     i1+j5+k9+l13 i2+j6+k10+l14 i3+j7+k11+l15 i4+j8+k12+l16
