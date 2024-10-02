@@ -52,8 +52,6 @@ void m2x2_add(m2x2 a, m2x2 b, m2x2 r);
 void m2x2_sub(m2x2 a, m2x2 b, m2x2 r);
 void m2x2_mul(m2x2 a, m2x2 b, m2x2 r);
 void m2x2_vec2_mul(m2x2 a, vec2 b, vec2 r);
-void m2x2_m2x3_mul(m2x2 a, m2x3 b, m2x3 r);
-void m2x2_m2x4_mul(m2x2 a, m2x4 b, m2x4 r);
 
 void m2x3_add(m2x3 a, m2x3 b, m2x3 r);
 void m2x3_sub(m2x3 a, m2x3 b, m2x3 r);
@@ -83,6 +81,7 @@ void m4x3_vec3_mul(m4x3 a, vec3 b, vec4 r);
 void m4x4_add(m4x4 a, m4x4 b, m4x4 r);
 void m4x4_sub(m4x4 a, m4x4 b, m4x4 r);
 void m4x4_vec4_mul(m4x4 a, vec4 b, vec4 r);
+void m4x4_m4x4_mul(m4x4 a, m4x4 b, m4x4 r);
 
 // helpers
 void print_vec2(vec2 v);
@@ -91,6 +90,7 @@ void print_vec4(vec4 v);
 void print_m2x2(m2x2 m);
 void print_m2x3(m2x3 m);
 void print_m2x4(m2x4 m);
+void print_m3x2(m3x2 m);
 void print_m3x3(m3x3 m);
 void print_m3x4(m3x4 m);
 void print_m4x2(m4x2 m);
@@ -101,8 +101,5 @@ void print_xmm(__m128 v);
 
 // tranpose
 void m2x2_transpose(m2x2 a, m2x2 r);
-void m3x2_transpose(m3x2 a, m2x3 r);
-void m2x3_transpose(m2x3 a, m3x2 r);
-void m2x4_transpose(m2x4 a, m4x2 b);
 void m3x3_transpose(m3x3 a, m3x3 b);
 void m4x4_transpose(m4x4 a, m4x4 b);

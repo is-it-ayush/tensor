@@ -23,6 +23,11 @@ void print_m2x4(m2x4 m) {
   print_vec4(m[0]);
   print_vec4(m[1]);
 }
+void print_m3x2(m3x2 m) {
+  print_vec2(m[0]);
+  print_vec2(m[1]);
+  print_vec2(m[2]);
+}
 void print_m3x3(m3x3 m) {
   print_vec3(m[0]);
   print_vec3(m[1]);
@@ -65,19 +70,6 @@ void print_xmm(__m128 v) {
 void m2x2_transpose(m2x2 a, m2x2 r) {
   __m128 d = _mm_load_ps(a[0]);
   _mm_store_ps(r[0], _mm_shuffle_ps(d, d, _MM_SHUFFLE(3, 1, 2, 0)));
-}
-void m3x2_transpose(m3x2 a, m2x3 r) {
-  __m256 x0 = _mm256_setzero_ps();
-  x0 = _mm256_maskload_ps(a[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1)); // 0 0 f e d c b a
-  _mm256_maskstore_ps(r[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1), _mm256_permutevar8x32_ps(x0, _mm256_set_epi32(7, 7, 5, 3, 1, 4, 2, 0)));
-}
-void m2x3_transpose(m2x3 a, m3x2 r) {
-  __m256 x0 = _mm256_setzero_ps();
-  x0 = _mm256_maskload_ps(a[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1));
-  _mm256_maskstore_ps(r[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1), _mm256_permutevar8x32_ps(x0, _mm256_set_epi32(7, 7, 5, 2, 4, 1, 3, 0)));
-}
-void m2x4_transpose(m2x4 a, m4x2 b) {
-  _mm256_store_ps(b[0], _mm256_permutevar8x32_ps(_mm256_load_ps(a[0]), _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0)));
 }
 void m3x3_transpose(m3x3 a, m3x3 b) {
   _mm256_store_ps(b[0], _mm256_permutevar8x32_ps(_mm256_load_ps(a[0]), _mm256_set_epi32(5, 2, 7, 4, 1, 6, 3, 0)));
@@ -209,80 +201,6 @@ void m2x2_vec2_mul(m2x2 a, vec2 b, vec2 r) {
   x0 = _mm_shuffle_ps(x0, x0, _MM_SHUFFLE(0, 0, 2, 0)); // [-,  -, ce+df, ae+bf]
 
   _mm_storel_pi((__m64 *)r, x0);
-}
-void m2x2_m2x3_mul(m2x2 a, m2x3 b, m2x3 r) {
-  // a b x e f g = ae+bh af+bi ag+bj
-  // c d   h i j   ce+dh cf+di cg+dj
-
-  // transposed b:
-  // e h
-  // f i
-  // g j
-
-  __m256 y0, y1 = _mm256_setzero_ps(), y2, y3;
-  __m128 lo, hi, sum;
-  m3x2 b_t;
-
-  m2x3_transpose(b, b_t);
-
-  y0 = _mm256_broadcast_ps((__m128 *)a);                                           // d c b a d c b a
-  y1 = _mm256_maskload_ps(b_t[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1)); // 0 0 j g i f h e
-  y1 = _mm256_permutevar8x32_ps(y1, _mm256_set_epi32(1, 0, 5, 4, 3, 2, 1, 0));     // h e j g i f h e
-
-  y2 = _mm256_mul_ps(y0, y1); // dh ce bj ag di cf bh ae
-  lo = _mm256_extractf128_ps(y2, 0); // di cf bh ae
-  hi = _mm256_extractf128_ps(y2, 1); // dh ce bj ag
-
-  sum = _mm_hadd_ps(lo, hi); // ce+dh ag+bj cf+di bh+ae
-
-  y3 = _mm256_insertf128_ps(_mm256_setzero_ps(), sum, 0); // 0 0 0 0 ce+dh ag+bj cf+di bh+ae
-
-  y1 = _mm256_permutevar8x32_ps(y1, _mm256_set_epi32(5, 4, 3, 2, 5, 4, 3, 2)); // j g i f j g i f
-  y2 = _mm256_mul_ps(y0, y1); // dj cg bi af dj cg bi af
-  lo = _mm256_extractf128_ps(y2, 0); // dj cg bi af
-  sum = _mm_hadd_ps(lo, lo); // cg+dj af+bi cg+dj af+bi
-
-  y3 = _mm256_insertf128_ps(y3, sum, 1); // cg+dj af+bi cg+dj af+bi ce+dh ag+bj cf+di bh+ae
-  y3 = _mm256_permutevar8x32_ps(y3, _mm256_set_epi32(-1, -1, 5, 1, 3, 2, 4, 0)); // ae+bf af+bi ag+bj ce+dh cf+di cg+dj
-
-  _mm256_maskstore_ps(r[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1), y3);
-}
-void m2x2_m2x4_mul(m2x2 a, m2x4 b, m2x4 r) {
-  // a b x e f g h = ae+bi af+bj ag+bk ah+bl
-  // c d   i j k l   ce+di cf+dj cg+dk ch+dl
-
-  // transposed b:
-  // e i
-  // f j
-  // g k
-  // h l
-
-  __m256 y0 = _mm256_setzero_ps(), y1, y2, y3;
-  __m128 lo, hi, sum;
-  m4x2 b_t;
-  m2x4_transpose(b, b_t);
-
-  y0 = _mm256_broadcast_ps((__m128 *)a); // d c b a d c b a
-  y1 = _mm256_load_ps(b_t[0]);           // l h k g j f i e
-
-  y2 = _mm256_mul_ps(y0, y1); // dl ch bk ag dj cf bi ae
-  lo = _mm256_extractf128_ps(y2, 0); // dj cf bi ae
-  hi = _mm256_extractf128_ps(y2, 1); // dl ch bk ag
-  sum = _mm_hadd_ps(lo, hi); // ch+dl ag+bk cf+dj bi+ae
-
-  y3 = _mm256_insertf128_ps(_mm256_setzero_ps(), sum, 0); // 0 0 0 0 ch+dl ag+bk cf+dj bi+ae
-
-  y0 = _mm256_permutevar8x32_ps(y0, _mm256_set_epi32(1, 0, 3, 2, 1, 0, 3, 2)); // b a d c b a d c
-  y2 = _mm256_mul_ps(y0, y1); // bl ah dk cg bj af di ce
-  lo = _mm256_extractf128_ps(y2, 0); // bj af di ce
-  hi = _mm256_extractf128_ps(y2, 1); // bl ah dk cg
-  sum = _mm_hadd_ps(lo, hi); // ah+bl cg+dk af+bj ce+di
-
-  y3 = _mm256_insertf128_ps(y3, sum, 1); // ah+bl cg+dk af+bj ce+di ch+dl ag+bk cf+dj bi+ae
-
-  y3 = _mm256_permutevar8x32_ps(y3, _mm256_set_epi32(3, 6, 1, 4, 7, 2, 5, 0)); // ae+bi af+bj ag+bk ah+bl ce+di cf+dj cg+dk ch+dl
-
-  _mm256_store_ps(r[0], y3);
 }
 
 void m2x3_add(m2x3 a, m2x3 b, m2x3 r) {
@@ -483,15 +401,3 @@ void m4x4_m4x4_mul(m4x4 a, m4x4 b, m4x4 r) {
     _mm_store_ps(r[i], x5);
   }
 }
-
-// 2x2 * 2x1 (m2x2_vec2_mul) | 2x2 * 2x2 (m2x2_mul) | 2x2 * 2x3 (m2x2_m2x3_mul: extra) | 2x2 * 2x4 (m2x2_m2x4_mul: extra)
-// 2x3 * 3x1 (m2x3_vec3_mul) |  -                   | -                                | -
-// 2x4 * 4x1 (m2x4_vec4_mul) |  -                   | -                                | -
-// 3x2 * 2x1 (m3x2_vec2_mul) |  -                   | -                                | -
-// 3x3 * 3x1 (m3x3_vec3_mul) |  -                   | 3x3 * 3x3 (m3x3_m3x3_mul)        | -
-// 3x4 * 4x1 (m3x4_vec4_mul) |  -                   | -                                | -
-// 4x2 * 2x1 (m4x2_vec2_mul) |  -                   | -                                | -
-// 4x3 * 3x1 (m4x2_vec3_mul) |  -                   | -                                | -
-// 4x4 * 4x1 (m4x4_vec4_mul) |  -                   | -                                | 4x4 * 4x4 (m4x4_m4x4_mul)
-
-// mat * vec | mat * mat | mat * mat | mat * mat

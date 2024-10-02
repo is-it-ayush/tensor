@@ -113,24 +113,6 @@ void m2x2_tests() {
   assert(r1[0] == 5.0f);
   assert(r1[1] == 11.0f);
 
-  m2x2_m2x3_mul(d0, d2, r2);
-  assert(r2[0][0] == 9.0f);
-  assert(r2[0][1] == 12.0f);
-  assert(r2[0][2] == 15.0f);
-  assert(r2[1][0] == 19.0f);
-  assert(r2[1][1] == 26.0f);
-  assert(r2[1][2] == 33.0f);
-
-  m2x2_m2x4_mul(d0, d3, r3);
-  assert(r3[0][0] == 11.0f);
-  assert(r3[0][1] == 14.0f);
-  assert(r3[0][2] == 17.0f);
-  assert(r3[0][3] == 20.0f);
-  assert(r3[1][0] == 23.0f);
-  assert(r3[1][1] == 30.0f);
-  assert(r3[1][2] == 37.0f);
-  assert(r3[1][3] == 44.0f);
-
   printf("m2x2 tests passed\n");
 }
 void m2x3_tests() {
@@ -333,6 +315,24 @@ void m4x4_tests() {
   assert(r1[1] == 70.0f);
   assert(r1[2] == 110.0f);
   assert(r1[3] == 150.0f);
+
+  m4x4_m4x4_mul(d0, d0, r0);
+  assert(r0[0][0] == 90.0f);
+  assert(r0[0][1] == 100.0f);
+  assert(r0[0][2] == 110.0f);
+  assert(r0[0][3] == 120.0f);
+  assert(r0[1][0] == 202.0f);
+  assert(r0[1][1] == 228.0f);
+  assert(r0[1][2] == 254.0f);
+  assert(r0[1][3] == 280.0f);
+  assert(r0[2][0] == 314.0f);
+  assert(r0[2][1] == 356.0f);
+  assert(r0[2][2] == 398.0f);
+  assert(r0[2][3] == 440.0f);
+  assert(r0[3][0] == 426.0f);
+  assert(r0[3][1] == 484.0f);
+  assert(r0[3][2] == 542.0f);
+  assert(r0[3][3] == 600.0f);
 
   printf("m4x4 tests passed\n");
 }
