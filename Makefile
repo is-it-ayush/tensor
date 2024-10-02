@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -std=c99 -pedantic -ggdb -O3 -march=native -fsanitize=address,undefined -fno-omit-frame-pointer
+CFLAGS=-Wall -Wextra -std=c11 -pedantic -ggdb -O3 -march=native -fsanitize=address,undefined -fno-omit-frame-pointer -fdiagnostics-show-option
 LIBS=
 
 all: main
