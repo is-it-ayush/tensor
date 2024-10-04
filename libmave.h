@@ -15,7 +15,6 @@ typedef float vec2[2];
 typedef float vec3[3];
 typedef float vec4[4];
 
-
 typedef MV_SIMD_ALIGN vec2 m2x2[2];
 typedef MV_SIMD_ALIGN vec3 m2x3[2];
 typedef MV_SIMD_ALIGN vec4 m2x4[2];
@@ -27,6 +26,8 @@ typedef MV_SIMD_ALIGN vec4 m3x4[3];
 typedef MV_SIMD_ALIGN vec2 m4x2[4];
 typedef MV_SIMD_ALIGN vec3 m4x3[4];
 typedef MV_SIMD_ALIGN vec4 m4x4[4];
+
+#define MATH_PI 3.1415926535897932384626433
 
 void vec2_add(vec2 a, vec2 b, vec2 r);
 void vec2_sub(vec2 a, vec2 b, vec2 r);
@@ -82,6 +83,9 @@ void m4x4_add(m4x4 a, m4x4 b, m4x4 r);
 void m4x4_sub(m4x4 a, m4x4 b, m4x4 r);
 void m4x4_mul(m4x4 a, m4x4 b, m4x4 r);
 void m4x4_vec4_mul(m4x4 a, vec4 b, vec4 r);
+
+double deg_to_rad(double deg);
+double rad_to_deg(double rad);
 
 // helpers
 void print_vec2(vec2 v);

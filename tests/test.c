@@ -89,24 +89,22 @@ void vec4_tests() {
 void m2x2_tests() {
   m2x2 d0 = {{1.0f, 2.0f}, {3.0f, 4.0f}};
   vec2 d1 = {1.0f, 2.0f};
-  m2x3 d2 = {{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}};
-  m2x4 d3 = {{1.0f, 2.0f, 3.0f, 4.0f}, {5.0f, 6.0f, 7.0f, 8.0f}};
   m2x2 r0;
   vec2 r1;
-  m2x3 r2;
-  m2x4 r3;
 
   m2x2_add(d0, d0, r0);
-  assert(r0[0][0] == 2.0f);
-  assert(r0[0][1] == 4.0f);
-  assert(r0[1][0] == 6.0f);
-  assert(r0[1][1] == 8.0f);
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < 2; j++) {
+      assert(r0[i][j] == 2.0f * d0[i][j]);
+    }
+  }
 
   m2x2_sub(d0, d0, r0);
-  assert(r0[0][0] == 0.0f);
-  assert(r0[0][1] == 0.0f);
-  assert(r0[1][0] == 0.0f);
-  assert(r0[1][1] == 0.0f);
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < 2; j++) {
+      assert(r0[i][j] == 0.0f);
+    }
+  }
 
   m2x2_mul(d0, d0, r0);
   assert(r0[0][0] == 7.0f);
@@ -369,6 +367,14 @@ void m4x4_tests() {
   printf("m4x4 tests passed\n");
 }
 
+void misc_tests() {
+  double rad = deg_to_rad(180.0f);
+  double deg = rad_to_deg(rad);
+  assert(rad == MATH_PI);
+  assert(deg == 180.0f);
+  printf("misc tests passed\n");
+}
+
 int main() {
   vec2_tests();
   vec3_tests();
@@ -383,5 +389,7 @@ int main() {
   m4x2_tests();
   m4x3_tests();
   m4x4_tests();
+
+  misc_tests();
   return 0;
 }

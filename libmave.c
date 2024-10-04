@@ -436,3 +436,10 @@ void m4x4_mul(m4x4 a, m4x4 b, m4x4 r) {
     _mm_store_ps(r[i], x5);
   }
 }
+
+double deg_to_rad(double deg) {
+  return deg * (MATH_PI / 180.0);
+}
+double rad_to_deg(double rad) {
+  return rad * (180.0 / MATH_PI);
+}
