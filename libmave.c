@@ -112,7 +112,7 @@ void vec2_sub(vec2 a, vec2 b, vec2 r) {
                 _mm_sub_ps(_mm_loadl_pi(_mm_setzero_ps(), (__m64 *)a),
                            _mm_loadl_pi(_mm_setzero_ps(), (__m64 *)b)));
 }
-void vec2_mul(vec2 a, vec2 b, vec2 r) {
+void vec2_dot_mul(vec2 a, vec2 b, vec2 r) {
   _mm_storel_pi((__m64 *)r,
                 _mm_mul_ps(_mm_loadl_pi(_mm_setzero_ps(), (__m64 *)a),
                            _mm_loadl_pi(_mm_setzero_ps(), (__m64 *)b)));
@@ -131,9 +131,24 @@ void vec3_sub(vec3 a, vec3 b, vec3 r) {
   _mm_maskstore_ps(r, _mm_set_epi32(0,-1,-1,-1), _mm_sub_ps(_mm_maskload_ps(a,_mm_set_epi32(0, -1, -1, -1)),
                               _mm_maskload_ps(b,_mm_set_epi32(0, -1, -1, -1))));
 }
-void vec3_mul(vec3 a, vec3 b, vec3 r) {
+void vec3_dot_mul(vec3 a, vec3 b, vec3 r) {
   _mm_maskstore_ps(r, _mm_set_epi32(0,-1,-1,-1), _mm_mul_ps(_mm_maskload_ps(a,_mm_set_epi32(0, -1, -1, -1)),
                               _mm_maskload_ps(b,_mm_set_epi32(0, -1, -1, -1))));
+}
+void vec3_cross_mul(vec3 a, vec3 b, vec3 r) {
+  // a     x     bz-cy  12-21
+  // b  x  y  =  cx-az  20-02
+  // c     z     ay-bx  01-10
+  __m128 x0, x1, x2, x3, x4;
+  x0 = _mm_maskload_ps(a, _mm_set_epi32(0,-1,-1,-1)); // 0 c b a
+  x1 = _mm_maskload_ps(b, _mm_set_epi32(0,-1,-1,-1)); // 0 z y x
+  x2 = _mm_permutevar_ps(x0, _mm_set_epi32(3, 0, 2, 1)); // 0 a c b
+  x3 = _mm_permutevar_ps(x1, _mm_set_epi32(3, 1, 0, 2)); // 0 y x z
+  x4 = _mm_mul_ps(x2, x3); // ay cx bz
+  x2 = _mm_permutevar_ps(x0, _mm_set_epi32(3, 1, 0, 2)); // 0 b a c
+  x3 = _mm_permutevar_ps(x1, _mm_set_epi32(3, 0, 2, 1)); // 0 x z y
+  x4 = _mm_sub_ps(x4, _mm_mul_ps(x2, x3)); // ay-bx cx-az bz-cy
+  _mm_maskstore_ps(r, _mm_set_epi32(0,-1,-1,-1), x4);
 }
 void vec3_div(vec3 a, vec3 b, vec3 r) {
   _mm_maskstore_ps(r, _mm_set_epi32(0,-1,-1,-1), _mm_div_ps(_mm_maskload_ps(a,_mm_set_epi32(0, -1, -1, -1)),
@@ -146,7 +161,7 @@ void vec4_add(vec4 a, vec4 b, vec4 r) {
 void vec4_sub(vec4 a, vec4 b, vec4 r) {
   _mm_store_ps(r, _mm_sub_ps(_mm_load_ps(a), _mm_load_ps(b)));
 }
-void vec4_mul(vec4 a, vec4 b, vec4 r) {
+void vec4_dot_mul(vec4 a, vec4 b, vec4 r) {
   _mm_store_ps(r, _mm_mul_ps(_mm_load_ps(a), _mm_load_ps(b)));
 }
 void vec4_div(vec4 a, vec4 b, vec4 r) {

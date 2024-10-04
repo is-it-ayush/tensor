@@ -14,7 +14,7 @@ void vec2_tests() {
   assert(r0[0] == 0.0f);
   assert(r0[1] == 0.0f);
 
-  vec2_mul(d0, d0, r0);
+  vec2_dot_mul(d0, d0, r0);
   assert(r0[0] == 1.0f);
   assert(r0[1] == 4.0f);
 
@@ -38,10 +38,15 @@ void vec3_tests() {
   assert(r0[1] == 0.0f);
   assert(r0[2] == 0.0f);
 
-  vec3_mul(d0, d0, r0);
+  vec3_dot_mul(d0, d0, r0);
   assert(r0[0] == 1.0f);
   assert(r0[1] == 4.0f);
   assert(r0[2] == 9.0f);
+
+  vec3_cross_mul(d0, d0, r0);
+  assert(r0[0] == 0.0f);
+  assert(r0[1] == 0.0f);
+  assert(r0[2] == 0.0f);
 
   vec3_div(d0, d0, r0);
   assert(r0[0] == 1.0f);
@@ -66,7 +71,7 @@ void vec4_tests() {
   assert(r0[2] == 0.0f);
   assert(r0[3] == 0.0f);
 
-  vec4_mul(d0, d0, r0);
+  vec4_dot_mul(d0, d0, r0);
   assert(r0[0] == 1.0f);
   assert(r0[1] == 4.0f);
   assert(r0[2] == 9.0f);

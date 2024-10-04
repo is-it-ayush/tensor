@@ -30,17 +30,18 @@ typedef MV_SIMD_ALIGN vec4 m4x4[4];
 
 void vec2_add(vec2 a, vec2 b, vec2 r);
 void vec2_sub(vec2 a, vec2 b, vec2 r);
-void vec2_mul(vec2 a, vec2 b, vec2 r);
+void vec2_dot_mul(vec2 a, vec2 b, vec2 r);
 void vec2_div(vec2 a, vec2 b, vec2 r);
 
 void vec3_add(vec3 a, vec3 b, vec3 r);
 void vec3_sub(vec3 a, vec3 b, vec3 r);
-void vec3_mul(vec3 a, vec3 b, vec3 r);
+void vec3_dot_mul(vec3 a, vec3 b, vec3 r);
+void vec3_cross_mul(vec3 a, vec3 b, vec3 r);
 void vec3_div(vec3 a, vec3 b, vec3 r);
 
 void vec4_add(vec4 a, vec4 b, vec4 r);
 void vec4_sub(vec4 a, vec4 b, vec4 r);
-void vec4_mul(vec4 a, vec4 b, vec4 r);
+void vec4_dot_mul(vec4 a, vec4 b, vec4 r);
 void vec4_div(vec4 a, vec4 b, vec4 r);
 
 void m2x2_add(m2x2 a, m2x2 b, m2x2 r);
