@@ -1,6 +1,9 @@
 #include "../libmave.h"
 #include <assert.h>
+#include <math.h>
 #include <stdio.h>
+
+#define EPSILON 1e-6
 
 void vec2_tests() {
   vec2 d0 = {1.0f, 2.0f};
@@ -323,6 +326,7 @@ void m4x3_tests() {
 void m4x4_tests() {
   m4x4 d0 = {{1,2,3,4}, {5,6,7,8}, {9,10,11,12}, {13,14,15,16}};
   vec4 d1 = {1, 2, 3, 4};
+  m4x4 d2 = {{1,0,0,0}, {0,1,0,0}, {0,0,1,0}, {0,0,0,1}};
   m4x4 r0;
   vec4 r1;
 
@@ -363,6 +367,14 @@ void m4x4_tests() {
   assert(r0[3][1] == 484.0f);
   assert(r0[3][2] == 542.0f);
   assert(r0[3][3] == 600.0f);
+
+  m4x4_rotate(d2, deg_to_rad(90.0), (vec3){0, 0, 1});
+  assert(fabs(d2[0][0] - 1.0f) < EPSILON);
+  assert(fabs(d2[0][1] - -1.0f) < EPSILON);
+  assert(fabs(d2[1][0] - 1.0f) < EPSILON);
+  assert(fabs(d2[1][1] - 1.0f) < EPSILON);
+  assert(fabs(d2[2][2] - 1.0f) < EPSILON);
+  assert(fabs(d2[3][3] - 1.0f) < EPSILON);
 
   printf("m4x4 tests passed\n");
 }

@@ -1,4 +1,5 @@
 #include "libmave.h"
+#include <math.h>
 #include <pmmintrin.h>
 #include <smmintrin.h>
 #include <stdio.h>
@@ -435,6 +436,39 @@ void m4x4_mul(m4x4 a, m4x4 b, m4x4 r) {
     x5 = _mm_blend_ps(_mm_blend_ps(_mm_blend_ps(_mm_dp_ps(x4, x0, 0b11110001), _mm_dp_ps(x4, x1, 0b11110010), 0b0010),_mm_dp_ps(x4,x2,0b11110100),0b0100),_mm_dp_ps(x4, x3, 0b11111000), 0b1000);
     _mm_store_ps(r[i], x5);
   }
+}
+// implement rodriques rotation formula
+void m4x4_rotate(m4x4 a, float angle, vec3 k) {
+  // - assuming angle is same for all axis
+  // - total rotation matrix (r_t) => r_z(angle) * r_y(angle) * r_x(angle)
+  // - rodriques rotation formula:
+  //   - r_t = a * cos(angle) + (axis x a) * sin(angle) + axis * (axis . a) * (1 - cos(angle))
+  //   - in matrix form,
+  // [ t + {x^2}c  txy - zs    txz + ys    0 ]
+  // [ txy + zs    t + {y^2}c  tyz - xs    0 ]
+  // [ txz - ys    tyz + xs    t + {z^2}c  0 ]
+  // [ 0           0           0           1 ]
+
+  float c = cosf(angle); // taylor series...or lookup table todo
+  float s = sinf(angle);
+  float t = 1 - c;
+
+  a[0][0] = t + k[0] * k[0] * c; // t + {x^2}c
+  a[0][1] = t * k[0] * k[1] - k[2] * s; // txy - zs
+  a[0][2] = t * k[0] * k[2] + k[1] * s; // txz + ys
+  a[0][3] = 0; // 0
+  a[1][0] = t * k[0] * k[1] + k[2] * s; // txy + zs
+  a[1][1] = t + k[1] * k[1] * c; // t + {y^2}c
+  a[1][2] = t * k[1] * k[2] - k[0] * s; // tyz - xs
+  a[1][3] = 0; // 0
+  a[2][0] = t * k[0] * k[2] - k[1] * s; // txz - ys
+  a[2][1] = t * k[1] * k[2] + k[0] * s; // tyz + xs
+  a[2][2] = t + k[2] * k[2] * c; // t + {z^2}c
+  a[2][3] = 0; // 0
+  for (int i=0; i<3; i++) {
+    a[3][i] = 0;
+  }
+  a[3][3] = 1;
 }
 
 double deg_to_rad(double deg) {

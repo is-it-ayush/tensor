@@ -83,6 +83,7 @@ void m4x4_add(m4x4 a, m4x4 b, m4x4 r);
 void m4x4_sub(m4x4 a, m4x4 b, m4x4 r);
 void m4x4_mul(m4x4 a, m4x4 b, m4x4 r);
 void m4x4_vec4_mul(m4x4 a, vec4 b, vec4 r);
+void m4x4_rotate(m4x4 a, float angle, vec3 axis);
 
 double deg_to_rad(double deg);
 double rad_to_deg(double rad);

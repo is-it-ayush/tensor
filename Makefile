@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -std=c11 -pedantic -ggdb -O3 -march=native -fsanitize=address,undefined -fno-omit-frame-pointer -fdiagnostics-show-option
-LIBS=
+LIBS=-lm
 
 all: test
 
