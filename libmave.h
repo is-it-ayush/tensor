@@ -31,19 +31,27 @@ typedef MV_SIMD_ALIGN vec4 m4x4[4];
 
 void vec2_add(vec2 a, vec2 b, vec2 r);
 void vec2_sub(vec2 a, vec2 b, vec2 r);
-void vec2_dot_mul(vec2 a, vec2 b, vec2 r);
+void vec2_scale(vec2 a, vec2 b, vec2 r);
+float vec2_dot_mul(vec2 a, vec2 b);
+float vec2_determinent(vec2 a, vec2 b);
 void vec2_div(vec2 a, vec2 b, vec2 r);
+float vec2_mag(vec2 a);
 
 void vec3_add(vec3 a, vec3 b, vec3 r);
 void vec3_sub(vec3 a, vec3 b, vec3 r);
-void vec3_dot_mul(vec3 a, vec3 b, vec3 r);
+void vec3_scale(vec3 a, vec3 b, vec3 r);
+float vec3_dot_mul(vec3 a, vec3 b);
 void vec3_cross_mul(vec3 a, vec3 b, vec3 r);
 void vec3_div(vec3 a, vec3 b, vec3 r);
+float vec3_mag(vec3 a);
 
 void vec4_add(vec4 a, vec4 b, vec4 r);
 void vec4_sub(vec4 a, vec4 b, vec4 r);
-void vec4_dot_mul(vec4 a, vec4 b, vec4 r);
+void vec4_scale(vec4 a, vec4 b, vec4 r);
+float vec4_dot_mul(vec4 a, vec4 b);
 void vec4_div(vec4 a, vec4 b, vec4 r);
+float vec4_mag(vec4 a);
+void vec4_rotate(vec4 a, float angle, vec3 axis, vec4 r);
 
 void m2x2_add(m2x2 a, m2x2 b, m2x2 r);
 void m2x2_sub(m2x2 a, m2x2 b, m2x2 r);
@@ -83,7 +91,6 @@ void m4x4_add(m4x4 a, m4x4 b, m4x4 r);
 void m4x4_sub(m4x4 a, m4x4 b, m4x4 r);
 void m4x4_mul(m4x4 a, m4x4 b, m4x4 r);
 void m4x4_vec4_mul(m4x4 a, vec4 b, vec4 r);
-void m4x4_rotate(m4x4 a, float angle, vec3 axis);
 
 double deg_to_rad(double deg);
 double rad_to_deg(double rad);

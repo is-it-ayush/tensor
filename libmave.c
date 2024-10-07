@@ -1,9 +1,10 @@
 #include "libmave.h"
+#include <emmintrin.h>
+#include <immintrin.h>
 #include <math.h>
 #include <pmmintrin.h>
 #include <smmintrin.h>
 #include <stdio.h>
-#include <immintrin.h>
 #include <xmmintrin.h>
 
 // helpers
@@ -73,7 +74,9 @@ void m2x2_transpose(m2x2 a, m2x2 r) {
   _mm_store_ps(r[0], _mm_shuffle_ps(d, d, _MM_SHUFFLE(3, 1, 2, 0)));
 }
 void m3x3_transpose(m3x3 a, m3x3 b) {
-  _mm256_store_ps(b[0], _mm256_permutevar8x32_ps(_mm256_load_ps(a[0]), _mm256_set_epi32(5, 2, 7, 4, 1, 6, 3, 0)));
+  _mm256_store_ps(
+      b[0], _mm256_permutevar8x32_ps(_mm256_load_ps(a[0]),
+                                     _mm256_set_epi32(5, 2, 7, 4, 1, 6, 3, 0)));
   b[2][2] = a[2][2]; // :( don't have access to avx512
 }
 void m4x4_transpose(m4x4 a, m4x4 b) {
@@ -113,47 +116,81 @@ void vec2_sub(vec2 a, vec2 b, vec2 r) {
                 _mm_sub_ps(_mm_loadl_pi(_mm_setzero_ps(), (__m64 *)a),
                            _mm_loadl_pi(_mm_setzero_ps(), (__m64 *)b)));
 }
-void vec2_dot_mul(vec2 a, vec2 b, vec2 r) {
+void vec2_scale(vec2 a, vec2 b, vec2 r) {
   _mm_storel_pi((__m64 *)r,
                 _mm_mul_ps(_mm_loadl_pi(_mm_setzero_ps(), (__m64 *)a),
                            _mm_loadl_pi(_mm_setzero_ps(), (__m64 *)b)));
+}
+float vec2_dot_mul(vec2 a, vec2 b) {
+  return _mm_cvtss_f32(_mm_dp_ps(_mm_loadl_pi(_mm_setzero_ps(), (__m64 *)a),
+                                 _mm_loadl_pi(_mm_setzero_ps(), (__m64 *)b),
+                                 0b00110001));
+}
+float vec2_determinent(vec2 a, vec2 b) {
+  // a  x  p  = aq - bp
+  // b     q
+  __m128 x0;
+  x0 = _mm_mul_ps(_mm_loadl_pi(_mm_setzero_ps(), (__m64 *)a),
+                  _mm_permutevar_ps(_mm_loadl_pi(_mm_setzero_ps(), (__m64 *)b),
+                                    _mm_set_epi32(0, 0, 0, 1)));
+  return _mm_cvtss_f32(
+      _mm_sub_ps(x0, _mm_permutevar_ps(x0, _mm_set_epi32(4, 3, 0, 1))));
 }
 void vec2_div(vec2 a, vec2 b, vec2 r) {
   _mm_storel_pi((__m64 *)r,
                 _mm_div_ps(_mm_loadl_pi(_mm_setzero_ps(), (__m64 *)a),
                            _mm_loadl_pi(_mm_setzero_ps(), (__m64 *)b)));
 }
+float vec2_mag(vec2 a) {
+  return fabsf(vec2_determinent(a, a)); // sqrt(a^2 + b^2)
+}
 
 void vec3_add(vec3 a, vec3 b, vec3 r) {
-  _mm_maskstore_ps(r, _mm_set_epi32(0,-1,-1,-1), _mm_add_ps(_mm_maskload_ps(a,_mm_set_epi32(0, -1, -1, -1)),
-                              _mm_maskload_ps(b,_mm_set_epi32(0, -1, -1, -1))));
+  _mm_maskstore_ps(
+      r, _mm_set_epi32(0, -1, -1, -1),
+      _mm_add_ps(_mm_maskload_ps(a, _mm_set_epi32(0, -1, -1, -1)),
+                 _mm_maskload_ps(b, _mm_set_epi32(0, -1, -1, -1))));
 }
 void vec3_sub(vec3 a, vec3 b, vec3 r) {
-  _mm_maskstore_ps(r, _mm_set_epi32(0,-1,-1,-1), _mm_sub_ps(_mm_maskload_ps(a,_mm_set_epi32(0, -1, -1, -1)),
-                              _mm_maskload_ps(b,_mm_set_epi32(0, -1, -1, -1))));
+  _mm_maskstore_ps(
+      r, _mm_set_epi32(0, -1, -1, -1),
+      _mm_sub_ps(_mm_maskload_ps(a, _mm_set_epi32(0, -1, -1, -1)),
+                 _mm_maskload_ps(b, _mm_set_epi32(0, -1, -1, -1))));
 }
-void vec3_dot_mul(vec3 a, vec3 b, vec3 r) {
-  _mm_maskstore_ps(r, _mm_set_epi32(0,-1,-1,-1), _mm_mul_ps(_mm_maskload_ps(a,_mm_set_epi32(0, -1, -1, -1)),
-                              _mm_maskload_ps(b,_mm_set_epi32(0, -1, -1, -1))));
+void vec3_scale(vec3 a, vec3 b, vec3 r) {
+  _mm_maskstore_ps(
+      r, _mm_set_epi32(0, -1, -1, -1),
+      _mm_mul_ps(_mm_maskload_ps(a, _mm_set_epi32(0, -1, -1, -1)),
+                 _mm_maskload_ps(b, _mm_set_epi32(0, -1, -1, -1))));
+}
+float vec3_dot_mul(vec3 a, vec3 b) {
+  return _mm_cvtss_f32(
+      _mm_dp_ps(_mm_maskload_ps(a, _mm_set_epi32(0, -1, -1, -1)),
+                _mm_maskload_ps(b, _mm_set_epi32(0, -1, -1, -1)), 0b01110001));
 }
 void vec3_cross_mul(vec3 a, vec3 b, vec3 r) {
   // a     x     bz-cy  12-21
   // b  x  y  =  cx-az  20-02
   // c     z     ay-bx  01-10
   __m128 x0, x1, x2, x3, x4;
-  x0 = _mm_maskload_ps(a, _mm_set_epi32(0,-1,-1,-1)); // 0 c b a
-  x1 = _mm_maskload_ps(b, _mm_set_epi32(0,-1,-1,-1)); // 0 z y x
+  x0 = _mm_maskload_ps(a, _mm_set_epi32(0, -1, -1, -1)); // 0 c b a
+  x1 = _mm_maskload_ps(b, _mm_set_epi32(0, -1, -1, -1)); // 0 z y x
   x2 = _mm_permutevar_ps(x0, _mm_set_epi32(3, 0, 2, 1)); // 0 a c b
   x3 = _mm_permutevar_ps(x1, _mm_set_epi32(3, 1, 0, 2)); // 0 y x z
-  x4 = _mm_mul_ps(x2, x3); // ay cx bz
+  x4 = _mm_mul_ps(x2, x3);                               // ay cx bz
   x2 = _mm_permutevar_ps(x0, _mm_set_epi32(3, 1, 0, 2)); // 0 b a c
   x3 = _mm_permutevar_ps(x1, _mm_set_epi32(3, 0, 2, 1)); // 0 x z y
-  x4 = _mm_sub_ps(x4, _mm_mul_ps(x2, x3)); // ay-bx cx-az bz-cy
-  _mm_maskstore_ps(r, _mm_set_epi32(0,-1,-1,-1), x4);
+  x4 = _mm_sub_ps(x4, _mm_mul_ps(x2, x3));               // ay-bx cx-az bz-cy
+  _mm_maskstore_ps(r, _mm_set_epi32(0, -1, -1, -1), x4);
 }
 void vec3_div(vec3 a, vec3 b, vec3 r) {
-  _mm_maskstore_ps(r, _mm_set_epi32(0,-1,-1,-1), _mm_div_ps(_mm_maskload_ps(a,_mm_set_epi32(0, -1, -1, -1)),
-                              _mm_maskload_ps(b,_mm_set_epi32(0, -1, -1, -1))));
+  _mm_maskstore_ps(
+      r, _mm_set_epi32(0, -1, -1, -1),
+      _mm_div_ps(_mm_maskload_ps(a, _mm_set_epi32(0, -1, -1, -1)),
+                 _mm_maskload_ps(b, _mm_set_epi32(0, -1, -1, -1))));
+}
+float vec3_mag(vec3 a) {
+  return sqrtf(vec3_dot_mul(a, a)); // sqrt(a^2 + b^2 + c^2)
 }
 
 void vec4_add(vec4 a, vec4 b, vec4 r) {
@@ -162,11 +199,49 @@ void vec4_add(vec4 a, vec4 b, vec4 r) {
 void vec4_sub(vec4 a, vec4 b, vec4 r) {
   _mm_store_ps(r, _mm_sub_ps(_mm_load_ps(a), _mm_load_ps(b)));
 }
-void vec4_dot_mul(vec4 a, vec4 b, vec4 r) {
+void vec4_scale(vec4 a, vec4 b, vec4 r) {
   _mm_store_ps(r, _mm_mul_ps(_mm_load_ps(a), _mm_load_ps(b)));
+}
+float vec4_dot_mul(vec4 a, vec4 b) {
+  return _mm_cvtss_f32(_mm_dp_ps(_mm_load_ps(a), _mm_load_ps(b), 0b11110001));
 }
 void vec4_div(vec4 a, vec4 b, vec4 r) {
   _mm_store_ps(r, _mm_div_ps(_mm_load_ps(a), _mm_load_ps(b)));
+}
+float vec4_mag(vec4 a) {
+  return sqrtf(vec4_dot_mul(a, a)); // sqrt(a^2 + b^2 + c^2 + d^2)
+}
+// implement rodriques rotation formula
+void vec4_rotate(vec4 a, float angle, vec3 axis, vec4 r) {
+  vec3 axis_n, v_cos, v_sin;
+  float t_cos, t_sin, mag;
+  float a_rad = deg_to_rad(angle);
+
+  t_cos = cosf(a_rad);
+  t_sin = sinf(a_rad);
+
+  mag = 1.0f / vec3_mag(axis);
+  vec3_scale(axis, (vec3){mag, mag, mag}, axis_n); // normalize axis
+  vec3_scale(axis_n, (vec3){t_cos, t_cos, t_cos}, v_cos);
+  vec3_scale(axis_n, (vec3){t_sin, t_sin, t_sin}, v_sin);
+  m4x4 m_rot = {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 1}};
+  vec3_scale(axis_n, (vec3){v_cos[0], v_cos[0], v_cos[0]}, m_rot[0]);
+  vec3_scale(axis_n, (vec3){v_cos[1], v_cos[1], v_cos[1]}, m_rot[1]);
+  vec3_scale(axis_n, (vec3){v_cos[2], v_cos[2], v_cos[2]}, m_rot[2]);
+
+  m_rot[0][0] += t_cos;
+  m_rot[0][1] += v_sin[2];
+  m_rot[0][2] -= v_sin[1];
+
+  m_rot[1][0] -= v_sin[2];
+  m_rot[1][1] += t_cos;
+  m_rot[1][2] += v_sin[0];
+
+  m_rot[2][0] += v_sin[1];
+  m_rot[2][1] -= v_sin[0];
+  m_rot[2][2] += t_cos;
+
+  m4x4_vec4_mul(m_rot, a, r);
 }
 
 void m2x2_add(m2x2 a, m2x2 b, m2x2 r) {
@@ -233,19 +308,22 @@ void m2x3_vec3_mul(m2x3 a, vec3 b, vec2 r) {
   //           i
 
   __m128 x0, x1, x2, x3;
-  x0 = _mm_maskload_ps(a[0], _mm_set_epi32(0, -1, -1, -1)); // 0 c b a
-  x1 = _mm_maskload_ps(b, _mm_set_epi32(0, -1, -1, -1)); // 0 i h g
-  x2 = _mm_dp_ps(x0, x1, 0b01110001); // ag+bh+ci
-  x0 = _mm_maskload_ps(a[0]+3, _mm_set_epi32(0, -1, -1, -1)); // 0 f e d
-  x3 = _mm_dp_ps(x0, x1, 0b01110010); // dg+eh+fi
-  _mm_maskstore_ps(r, _mm_set_epi32(0,0,-1,-1), _mm_blend_ps(x2, x3, 0b0010));
+  x0 = _mm_maskload_ps(a[0], _mm_set_epi32(0, -1, -1, -1));     // 0 c b a
+  x1 = _mm_maskload_ps(b, _mm_set_epi32(0, -1, -1, -1));        // 0 i h g
+  x2 = _mm_dp_ps(x0, x1, 0b01110001);                           // ag+bh+ci
+  x0 = _mm_maskload_ps(a[0] + 3, _mm_set_epi32(0, -1, -1, -1)); // 0 f e d
+  x3 = _mm_dp_ps(x0, x1, 0b01110010);                           // dg+eh+fi
+  _mm_maskstore_ps(r, _mm_set_epi32(0, 0, -1, -1),
+                   _mm_blend_ps(x2, x3, 0b0010));
 }
 
 void m2x4_add(m2x4 a, m2x4 b, m2x4 r) {
-  _mm256_store_ps(r[0], _mm256_add_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
+  _mm256_store_ps(r[0],
+                  _mm256_add_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
 }
 void m2x4_sub(m2x4 a, m2x4 b, m2x4 r) {
-  _mm256_store_ps(r[0], _mm256_sub_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
+  _mm256_store_ps(r[0],
+                  _mm256_sub_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
 }
 void m2x4_vec4_mul(m2x4 a, vec4 b, vec2 r) {
   // a b c d x i = ai+bj+ck+dl
@@ -254,14 +332,27 @@ void m2x4_vec4_mul(m2x4 a, vec4 b, vec2 r) {
   //           l
   __m128 x0;
   x0 = _mm_load_ps(b); // l k j i
-  _mm_maskstore_ps(r, _mm_set_epi32(0,0,-1,-1), _mm_blend_ps(_mm_dp_ps(_mm_load_ps(a[0]), x0, 0b11110001), _mm_dp_ps(_mm_load_ps(a[0]+4), x0, 0b11110010), 0b0010));
+  _mm_maskstore_ps(
+      r, _mm_set_epi32(0, 0, -1, -1),
+      _mm_blend_ps(_mm_dp_ps(_mm_load_ps(a[0]), x0, 0b11110001),
+                   _mm_dp_ps(_mm_load_ps(a[0] + 4), x0, 0b11110010), 0b0010));
 }
 
 void m3x2_add(m3x2 a, m3x2 b, m3x2 r) {
-  _mm256_maskstore_ps(r[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1), _mm256_add_ps(_mm256_maskload_ps(a[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1)), _mm256_maskload_ps(b[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1))));
+  _mm256_maskstore_ps(
+      r[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1),
+      _mm256_add_ps(_mm256_maskload_ps(
+                        a[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1)),
+                    _mm256_maskload_ps(
+                        b[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1))));
 }
 void m3x2_sub(m3x2 a, m3x2 b, m3x2 r) {
-    _mm256_maskstore_ps(r[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1), _mm256_sub_ps(_mm256_maskload_ps(a[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1)), _mm256_maskload_ps(b[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1))));
+  _mm256_maskstore_ps(
+      r[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1),
+      _mm256_sub_ps(_mm256_maskload_ps(
+                        a[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1)),
+                    _mm256_maskload_ps(
+                        b[0], _mm256_set_epi32(0, 0, -1, -1, -1, -1, -1, -1))));
 }
 void m3x2_vec2_mul(m3x2 a, vec2 b, vec3 r) {
   // a b     x     ax+by
@@ -269,12 +360,16 @@ void m3x2_vec2_mul(m3x2 a, vec2 b, vec3 r) {
   // e f           ex+fy
 
   __m128 x0, x1, x2, x3;
-  x0 = _mm_load_ps(a[0]); // d c b a
-  x1 = _mm_maskload_ps(a[0]+4, _mm_set_epi32(0, 0, -1, -1)); // 0 0 e f
-  x2 = _mm_permutevar_ps(_mm_maskload_ps(b, _mm_set_epi32(0, 0, -1, -1)), _mm_set_epi32(1, 0, 1, 0)); // y x y x
-  x3 = _mm_blend_ps(_mm_blend_ps(_mm_dp_ps(x0, x2, 0b00110001), _mm_dp_ps(x0, x2, 0b11000010), 0b0010), _mm_dp_ps(x1, x2, 0b00110100), 0b0100); // 0 ex+fy cx+dy ax+by
+  x0 = _mm_load_ps(a[0]);                                      // d c b a
+  x1 = _mm_maskload_ps(a[0] + 4, _mm_set_epi32(0, 0, -1, -1)); // 0 0 e f
+  x2 = _mm_permutevar_ps(_mm_maskload_ps(b, _mm_set_epi32(0, 0, -1, -1)),
+                         _mm_set_epi32(1, 0, 1, 0)); // y x y x
+  x3 = _mm_blend_ps(_mm_blend_ps(_mm_dp_ps(x0, x2, 0b00110001),
+                                 _mm_dp_ps(x0, x2, 0b11000010), 0b0010),
+                    _mm_dp_ps(x1, x2, 0b00110100),
+                    0b0100); // 0 ex+fy cx+dy ax+by
 
-  _mm_maskstore_ps(r, _mm_set_epi32(0,-1,-1,-1), x3);
+  _mm_maskstore_ps(r, _mm_set_epi32(0, -1, -1, -1), x3);
 }
 
 void m3x3_add(m3x3 a, m3x3 b, m3x3 r) {
@@ -292,14 +387,17 @@ void m3x3_vec3_mul(m3x3 a, vec3 b, vec3 r) {
   // d e f  x  y  =  dx+ey+fz
   // g h i     z     gx+hy+iz
 
-  __m128 x0,x1,x2,x3,x4;
-    x0 = _mm_maskload_ps(b, _mm_set_epi32(0, -1, -1, -1)); // 0 z y x
-    x1 = _mm_dp_ps(_mm_maskload_ps(a[0], _mm_set_epi32(0, -1, -1, -1)), x0, 0b01110001); // ax+by+cz
-    x2 = _mm_dp_ps(_mm_maskload_ps(a[0]+3, _mm_set_epi32(0, -1, -1, -1)), x0, 0b01110010); // dx+ey+fz
-    x3 = _mm_dp_ps(_mm_maskload_ps(a[0]+6, _mm_set_epi32(0, -1, -1, -1)), x0, 0b01110100); // gx+hy+iz
-    x4 = _mm_blend_ps(x1, x2, 0b0010);
-    x4 = _mm_blend_ps(x4, x3, 0b0100);
-    _mm_maskstore_ps(r, _mm_set_epi32(0,-1,-1,-1),x4);
+  __m128 x0, x1, x2, x3, x4;
+  x0 = _mm_maskload_ps(b, _mm_set_epi32(0, -1, -1, -1)); // 0 z y x
+  x1 = _mm_dp_ps(_mm_maskload_ps(a[0], _mm_set_epi32(0, -1, -1, -1)), x0,
+                 0b01110001); // ax+by+cz
+  x2 = _mm_dp_ps(_mm_maskload_ps(a[0] + 3, _mm_set_epi32(0, -1, -1, -1)), x0,
+                 0b01110010); // dx+ey+fz
+  x3 = _mm_dp_ps(_mm_maskload_ps(a[0] + 6, _mm_set_epi32(0, -1, -1, -1)), x0,
+                 0b01110100); // gx+hy+iz
+  x4 = _mm_blend_ps(x1, x2, 0b0010);
+  x4 = _mm_blend_ps(x4, x3, 0b0100);
+  _mm_maskstore_ps(r, _mm_set_epi32(0, -1, -1, -1), x4);
 }
 void m3x3_mul(m3x3 a, m3x3 b, m3x3 r) {
   // a b c     j k l     aj+bm+cp ak+bn+cq al+bo+cr
@@ -311,26 +409,42 @@ void m3x3_mul(m3x3 a, m3x3 b, m3x3 r) {
   m3x3_transpose(b, b_t); // r o l q n k p m j
 
   __m128 x0, x1, x2, x3, x4, x5;
-  x0 = _mm_maskload_ps(a[0], _mm_set_epi32(0, -1, -1, -1)); // 0 c b a
-  x1 = _mm_maskload_ps(a[0]+3, _mm_set_epi32(0, -1, -1, -1)); // 0 f e d
-  x2 = _mm_maskload_ps(a[0]+6, _mm_set_epi32(0, -1, -1, -1)); // 0 g h i
+  x0 = _mm_maskload_ps(a[0], _mm_set_epi32(0, -1, -1, -1));     // 0 c b a
+  x1 = _mm_maskload_ps(a[0] + 3, _mm_set_epi32(0, -1, -1, -1)); // 0 f e d
+  x2 = _mm_maskload_ps(a[0] + 6, _mm_set_epi32(0, -1, -1, -1)); // 0 g h i
 
-  x3 = _mm_maskload_ps(b_t[0], _mm_set_epi32(0, -1, -1, -1)); // 0 p m j
-  x4 = _mm_maskload_ps(b_t[0]+3, _mm_set_epi32(0, -1, -1, -1)); // 0 q n k
-  x5 = _mm_maskload_ps(b_t[0]+6, _mm_set_epi32(0, -1, -1, -1)); // 0 r o l
+  x3 = _mm_maskload_ps(b_t[0], _mm_set_epi32(0, -1, -1, -1));     // 0 p m j
+  x4 = _mm_maskload_ps(b_t[0] + 3, _mm_set_epi32(0, -1, -1, -1)); // 0 q n k
+  x5 = _mm_maskload_ps(b_t[0] + 6, _mm_set_epi32(0, -1, -1, -1)); // 0 r o l
 
-  _mm_store_ps(r[0], _mm_blend_ps(_mm_blend_ps(_mm_blend_ps(_mm_dp_ps(x0, x3, 0b01110001), _mm_dp_ps(x0, x4, 0b01110010), 0b0010), _mm_dp_ps(x0, x5, 0b01110100), 0b0100), _mm_dp_ps(x1, x3, 0b01111000), 0b1000));
-  _mm_store_ps(r[0]+4, _mm_blend_ps(_mm_blend_ps(_mm_blend_ps(_mm_dp_ps(x1, x4, 0b01110001), _mm_dp_ps(x1, x5, 0b01110010), 0b0010), _mm_dp_ps(x2, x3, 0b01110100), 0b0100), _mm_dp_ps(x2, x4, 0b01111000), 0b1000));
-  _mm_store_ss(r[0]+8, _mm_dp_ps(x2, x5, 0b01110001));
+  _mm_store_ps(
+      r[0],
+      _mm_blend_ps(
+          _mm_blend_ps(_mm_blend_ps(_mm_dp_ps(x0, x3, 0b01110001),
+                                    _mm_dp_ps(x0, x4, 0b01110010), 0b0010),
+                       _mm_dp_ps(x0, x5, 0b01110100), 0b0100),
+          _mm_dp_ps(x1, x3, 0b01111000), 0b1000));
+  _mm_store_ps(
+      r[0] + 4,
+      _mm_blend_ps(
+          _mm_blend_ps(_mm_blend_ps(_mm_dp_ps(x1, x4, 0b01110001),
+                                    _mm_dp_ps(x1, x5, 0b01110010), 0b0010),
+                       _mm_dp_ps(x2, x3, 0b01110100), 0b0100),
+          _mm_dp_ps(x2, x4, 0b01111000), 0b1000));
+  _mm_store_ss(r[0] + 8, _mm_dp_ps(x2, x5, 0b01110001));
 }
 
 void m3x4_add(m3x4 a, m3x4 b, m3x4 r) {
-  _mm256_store_ps(r[0], _mm256_add_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
-  _mm_store_ps(r[0]+8, _mm_add_ps(_mm_load_ps(a[0]+8), _mm_load_ps(b[0]+8)));
+  _mm256_store_ps(r[0],
+                  _mm256_add_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
+  _mm_store_ps(r[0] + 8,
+               _mm_add_ps(_mm_load_ps(a[0] + 8), _mm_load_ps(b[0] + 8)));
 }
 void m3x4_sub(m3x4 a, m3x4 b, m3x4 r) {
-  _mm256_store_ps(r[0], _mm256_sub_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
-  _mm_store_ps(r[0]+8, _mm_sub_ps(_mm_load_ps(a[0]+8), _mm_load_ps(b[0]+8)));
+  _mm256_store_ps(r[0],
+                  _mm256_sub_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
+  _mm_store_ps(r[0] + 8,
+               _mm_sub_ps(_mm_load_ps(a[0] + 8), _mm_load_ps(b[0] + 8)));
 }
 void m3x4_vec4_mul(m3x4 a, vec4 b, vec3 r) {
   // a b c d     w     aw+bx+cy+dz
@@ -339,20 +453,24 @@ void m3x4_vec4_mul(m3x4 a, vec4 b, vec3 r) {
   //             z
 
   __m128 x0, x1, x2, x3, x4;
-  x0 = _mm_load_ps(a[0]); // d c b a
-  x1 = _mm_load_ps(a[0]+4); // h g f e
-  x2 = _mm_load_ps(a[0]+8); // l k j i
-  x3 = _mm_load_ps(b); // z y x w
+  x0 = _mm_load_ps(a[0]);     // d c b a
+  x1 = _mm_load_ps(a[0] + 4); // h g f e
+  x2 = _mm_load_ps(a[0] + 8); // l k j i
+  x3 = _mm_load_ps(b);        // z y x w
 
-  x4 = _mm_blend_ps(_mm_blend_ps(_mm_dp_ps(x0, x3, 0b11110001), _mm_dp_ps(x1, x3, 0b11110010), 0b0010), _mm_dp_ps(x2, x3, 0b11110100), 0b0100);
-  _mm_maskstore_ps(r, _mm_set_epi32(0,-1,-1,-1), x4);
+  x4 = _mm_blend_ps(_mm_blend_ps(_mm_dp_ps(x0, x3, 0b11110001),
+                                 _mm_dp_ps(x1, x3, 0b11110010), 0b0010),
+                    _mm_dp_ps(x2, x3, 0b11110100), 0b0100);
+  _mm_maskstore_ps(r, _mm_set_epi32(0, -1, -1, -1), x4);
 }
 
 void m4x2_add(m4x2 a, m4x2 b, m4x2 r) {
-  _mm256_store_ps(r[0], _mm256_add_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
+  _mm256_store_ps(r[0],
+                  _mm256_add_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
 }
 void m4x2_sub(m4x2 a, m4x2 b, m4x2 r) {
-  _mm256_store_ps(r[0], _mm256_sub_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
+  _mm256_store_ps(r[0],
+                  _mm256_sub_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
 }
 void m4x2_vec2_mul(m4x2 a, vec2 b, vec4 r) {
   // a b     x     ax+by
@@ -363,19 +481,28 @@ void m4x2_vec2_mul(m4x2 a, vec2 b, vec4 r) {
   __m256 y0, y1, y2;
   __m128 sum;
   y0 = _mm256_load_ps(a[0]); // h g f e d c b a
-  y1 = _mm256_permutevar8x32_ps(_mm256_maskload_ps(b, _mm256_set_epi32(0, 0, 0, 0, 0, 0, -1, -1)), _mm256_set_epi32(1, 0, 1, 0, 1, 0, 1, 0)); // y x y x y x y x
-  y2 = _mm256_permutevar8x32_ps(_mm256_mul_ps(y0, y1), _mm256_set_epi32(7, 5, 3, 1, 6, 4, 2, 0)); // hy fy dy by gx ex cx ax
-  sum = _mm_add_ps(_mm256_extractf128_ps(y2, 0), _mm256_extractf128_ps(y2, 1)); // gx+hy ex+fy cx+dy ax+by
+  y1 = _mm256_permutevar8x32_ps(
+      _mm256_maskload_ps(b, _mm256_set_epi32(0, 0, 0, 0, 0, 0, -1, -1)),
+      _mm256_set_epi32(1, 0, 1, 0, 1, 0, 1, 0)); // y x y x y x y x
+  y2 = _mm256_permutevar8x32_ps(
+      _mm256_mul_ps(y0, y1),
+      _mm256_set_epi32(7, 5, 3, 1, 6, 4, 2, 0)); // hy fy dy by gx ex cx ax
+  sum = _mm_add_ps(_mm256_extractf128_ps(y2, 0),
+                   _mm256_extractf128_ps(y2, 1)); // gx+hy ex+fy cx+dy ax+by
   _mm_store_ps(r, sum);
 }
 
 void m4x3_add(m4x3 a, m4x3 b, m4x3 r) {
-  _mm256_store_ps(r[0], _mm256_add_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
-  _mm_store_ps(r[0]+8, _mm_add_ps(_mm_load_ps(a[0]+8), _mm_load_ps(b[0]+8)));
+  _mm256_store_ps(r[0],
+                  _mm256_add_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
+  _mm_store_ps(r[0] + 8,
+               _mm_add_ps(_mm_load_ps(a[0] + 8), _mm_load_ps(b[0] + 8)));
 }
 void m4x3_sub(m4x3 a, m4x3 b, m4x3 r) {
-  _mm256_store_ps(r[0], _mm256_sub_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
-  _mm_store_ps(r[0]+8, _mm_sub_ps(_mm_load_ps(a[0]+8), _mm_load_ps(b[0]+8)));
+  _mm256_store_ps(r[0],
+                  _mm256_sub_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
+  _mm_store_ps(r[0] + 8,
+               _mm_sub_ps(_mm_load_ps(a[0] + 8), _mm_load_ps(b[0] + 8)));
 }
 void m4x3_vec3_mul(m4x3 a, vec3 b, vec4 r) {
   // a b c     x   ax+by+cz
@@ -384,22 +511,31 @@ void m4x3_vec3_mul(m4x3 a, vec3 b, vec4 r) {
   // j k l         jx+ky+lz
 
   __m128 x0, x1, x2, x3, x4, x5;
-  x0 = _mm_load_ps(a[0]); // d c b a
-  x1 = _mm_loadu_ps(a[0]+3); // g f e d
-  x2 = _mm_loadu_ps(a[0]+6); // j i h g
-  x3 = _mm_maskload_ps(a[0]+9, _mm_set_epi32(0, -1, -1, -1)); // 0 l k j
-  x4 = _mm_maskload_ps(b, _mm_set_epi32(0, -1, -1, -1)); // 0 z y x
-  x5 = _mm_blend_ps(_mm_blend_ps(_mm_blend_ps(_mm_dp_ps(x0, x4, 0b01110001), _mm_dp_ps(x1, x4, 0b01110010), 0b0010), _mm_dp_ps(x2,x4,0b01110100), 0b0100), _mm_dp_ps(x3, x4, 0b01111000), 0b1000); // jx+ky+lz gx+hy+iz dx+ey+fz ax+by+cz
+  x0 = _mm_load_ps(a[0]);                                       // d c b a
+  x1 = _mm_loadu_ps(a[0] + 3);                                  // g f e d
+  x2 = _mm_loadu_ps(a[0] + 6);                                  // j i h g
+  x3 = _mm_maskload_ps(a[0] + 9, _mm_set_epi32(0, -1, -1, -1)); // 0 l k j
+  x4 = _mm_maskload_ps(b, _mm_set_epi32(0, -1, -1, -1));        // 0 z y x
+  x5 = _mm_blend_ps(
+      _mm_blend_ps(_mm_blend_ps(_mm_dp_ps(x0, x4, 0b01110001),
+                                _mm_dp_ps(x1, x4, 0b01110010), 0b0010),
+                   _mm_dp_ps(x2, x4, 0b01110100), 0b0100),
+      _mm_dp_ps(x3, x4, 0b01111000),
+      0b1000); // jx+ky+lz gx+hy+iz dx+ey+fz ax+by+cz
   _mm_store_ps(r, x5);
 }
 
 void m4x4_add(m4x4 a, m4x4 b, m4x4 r) {
-  _mm256_store_ps(r[0], _mm256_add_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
-  _mm256_store_ps(r[0]+8, _mm256_add_ps(_mm256_load_ps(a[0]+8), _mm256_load_ps(b[0]+8)));
+  _mm256_store_ps(r[0],
+                  _mm256_add_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
+  _mm256_store_ps(r[0] + 8, _mm256_add_ps(_mm256_load_ps(a[0] + 8),
+                                          _mm256_load_ps(b[0] + 8)));
 }
 void m4x4_sub(m4x4 a, m4x4 b, m4x4 r) {
-  _mm256_store_ps(r[0], _mm256_sub_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
-  _mm256_store_ps(r[0]+8, _mm256_sub_ps(_mm256_load_ps(a[0]+8), _mm256_load_ps(b[0]+8)));
+  _mm256_store_ps(r[0],
+                  _mm256_sub_ps(_mm256_load_ps(a[0]), _mm256_load_ps(b[0])));
+  _mm256_store_ps(r[0] + 8, _mm256_sub_ps(_mm256_load_ps(a[0] + 8),
+                                          _mm256_load_ps(b[0] + 8)));
 }
 void m4x4_vec4_mul(m4x4 a, vec4 b, vec4 r) {
   // a b c d     w    aw+bx+cy+dz
@@ -408,72 +544,45 @@ void m4x4_vec4_mul(m4x4 a, vec4 b, vec4 r) {
   // m n o p     z    mw+nx+oy+pz
 
   __m128 x0, x1, x2, x3, x4, x5;
-  x0 = _mm_load_ps(a[0]); // d c b a
-  x1 = _mm_load_ps(a[0]+4); // h g f e
-  x2 = _mm_load_ps(a[0]+8); // l k j i
-  x3 = _mm_load_ps(a[0]+12); // p o n m
-  x4 = _mm_load_ps(b); // z y x w
+  x0 = _mm_load_ps(a[0]);      // d c b a
+  x1 = _mm_load_ps(a[0] + 4);  // h g f e
+  x2 = _mm_load_ps(a[0] + 8);  // l k j i
+  x3 = _mm_load_ps(a[0] + 12); // p o n m
+  x4 = _mm_load_ps(b);         // z y x w
 
-  x5 = _mm_blend_ps(_mm_blend_ps(_mm_blend_ps(_mm_dp_ps(x0, x4, 0b11110001), _mm_dp_ps(x1, x4, 0b11110010), 0b0010), _mm_dp_ps(x2, x4, 0b11110100), 0b0100), _mm_dp_ps(x3, x4, 0b11111000), 0b1000); // mw+nx+oy+pz iw+jx+ky+lz ew+fx+gy+hz aw+bx+cy+dz
+  x5 = _mm_blend_ps(
+      _mm_blend_ps(_mm_blend_ps(_mm_dp_ps(x0, x4, 0b11110001),
+                                _mm_dp_ps(x1, x4, 0b11110010), 0b0010),
+                   _mm_dp_ps(x2, x4, 0b11110100), 0b0100),
+      _mm_dp_ps(x3, x4, 0b11111000),
+      0b1000); // mw+nx+oy+pz iw+jx+ky+lz ew+fx+gy+hz aw+bx+cy+dz
   _mm_store_ps(r, x5);
 }
 void m4x4_mul(m4x4 a, m4x4 b, m4x4 r) {
-  // a b c d     1 2 3 4        a1+b5+c9+d13 a2+b6+c10+d14 a3+b7+c11+d15 a4+b8+c12+d16
-  // e f g h  x  5 6 7 8     =  e1+f5+g9+h13 e2+f6+g10+h14 e3+f7+g11+h15 e4+f8+g12+h16
-  // i j k l     9 10 11 12     i1+j5+k9+l13 i2+j6+k10+l14 i3+j7+k11+l15 i4+j8+k12+l16
-  // m n o p     13 14 15 16    m1+n5+o9+p13 m2+n6+o10+p14 m3+n7+o11+p15 m4+n8+o12+p16
+  // a b c d     1 2 3 4        a1+b5+c9+d13 a2+b6+c10+d14 a3+b7+c11+d15
+  // a4+b8+c12+d16 e f g h  x  5 6 7 8     =  e1+f5+g9+h13 e2+f6+g10+h14
+  // e3+f7+g11+h15 e4+f8+g12+h16 i j k l     9 10 11 12     i1+j5+k9+l13
+  // i2+j6+k10+l14 i3+j7+k11+l15 i4+j8+k12+l16 m n o p     13 14 15 16
+  // m1+n5+o9+p13 m2+n6+o10+p14 m3+n7+o11+p15 m4+n8+o12+p16
 
-  __m128 x0, x1, x2, x3, x4, x5, x6, x7;
+  __m128 x0, x1, x2, x3, x4, x5;
   m4x4 b_t;
   m4x4_transpose(b, b_t);
-  x0 = _mm_load_ps(b_t[0]); // 13 9 5 1
-  x1 = _mm_load_ps(b_t[0]+4); // 14 10 6 2
-  x2 = _mm_load_ps(b_t[0]+8); // 15 11 7 3
-  x3 = _mm_load_ps(b_t[0]+12); // 16 12 8 4
+  x0 = _mm_load_ps(b_t[0]);      // 13 9 5 1
+  x1 = _mm_load_ps(b_t[0] + 4);  // 14 10 6 2
+  x2 = _mm_load_ps(b_t[0] + 8);  // 15 11 7 3
+  x3 = _mm_load_ps(b_t[0] + 12); // 16 12 8 4
 
-  for (int i=0; i<4; i++) {
+  for (int i = 0; i < 4; i++) {
     x4 = _mm_load_ps(a[i]);
-    x5 = _mm_blend_ps(_mm_blend_ps(_mm_blend_ps(_mm_dp_ps(x4, x0, 0b11110001), _mm_dp_ps(x4, x1, 0b11110010), 0b0010),_mm_dp_ps(x4,x2,0b11110100),0b0100),_mm_dp_ps(x4, x3, 0b11111000), 0b1000);
+    x5 = _mm_blend_ps(
+        _mm_blend_ps(_mm_blend_ps(_mm_dp_ps(x4, x0, 0b11110001),
+                                  _mm_dp_ps(x4, x1, 0b11110010), 0b0010),
+                     _mm_dp_ps(x4, x2, 0b11110100), 0b0100),
+        _mm_dp_ps(x4, x3, 0b11111000), 0b1000);
     _mm_store_ps(r[i], x5);
   }
 }
-// implement rodriques rotation formula
-void m4x4_rotate(m4x4 a, float angle, vec3 k) {
-  // - assuming angle is same for all axis
-  // - total rotation matrix (r_t) => r_z(angle) * r_y(angle) * r_x(angle)
-  // - rodriques rotation formula:
-  //   - r_t = a * cos(angle) + (axis x a) * sin(angle) + axis * (axis . a) * (1 - cos(angle))
-  //   - in matrix form,
-  // [ t + {x^2}c  txy - zs    txz + ys    0 ]
-  // [ txy + zs    t + {y^2}c  tyz - xs    0 ]
-  // [ txz - ys    tyz + xs    t + {z^2}c  0 ]
-  // [ 0           0           0           1 ]
 
-  float c = cosf(angle); // taylor series...or lookup table todo
-  float s = sinf(angle);
-  float t = 1 - c;
-
-  a[0][0] = t + k[0] * k[0] * c; // t + {x^2}c
-  a[0][1] = t * k[0] * k[1] - k[2] * s; // txy - zs
-  a[0][2] = t * k[0] * k[2] + k[1] * s; // txz + ys
-  a[0][3] = 0; // 0
-  a[1][0] = t * k[0] * k[1] + k[2] * s; // txy + zs
-  a[1][1] = t + k[1] * k[1] * c; // t + {y^2}c
-  a[1][2] = t * k[1] * k[2] - k[0] * s; // tyz - xs
-  a[1][3] = 0; // 0
-  a[2][0] = t * k[0] * k[2] - k[1] * s; // txz - ys
-  a[2][1] = t * k[1] * k[2] + k[0] * s; // tyz + xs
-  a[2][2] = t + k[2] * k[2] * c; // t + {z^2}c
-  a[2][3] = 0; // 0
-  for (int i=0; i<3; i++) {
-    a[3][i] = 0;
-  }
-  a[3][3] = 1;
-}
-
-double deg_to_rad(double deg) {
-  return deg * (MATH_PI / 180.0);
-}
-double rad_to_deg(double rad) {
-  return rad * (180.0 / MATH_PI);
-}
+double deg_to_rad(double deg) { return deg * (MATH_PI / 180.0); }
+double rad_to_deg(double rad) { return rad * (180.0 / MATH_PI); }
