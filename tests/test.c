@@ -1,4 +1,4 @@
-#include "../libmave.h"
+#include "../tensor.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -77,6 +77,7 @@ void vec3_tests() {
 }
 void vec4_tests() {
   vec4 d0 = {1.0f, 2.0f, 3.0f, 4.0f};
+  vec4 d1 = {10.0f, 5.0f, 7.0f, 1.0f};
   vec4 r0;
   float r1;
 
@@ -109,6 +110,11 @@ void vec4_tests() {
 
   r1 = vec4_mag(d0);
   assert(fabs(r1 - 5.477226f) < EPSILON);
+
+  vec4_rotate(d1, 60.0f, (vec3){1.0f, 0.0f, 0.0f}, r0);
+  assert(fabs(r0[0] - 10.0f) < EPSILON);
+  assert(fabs(r0[1] - 8.562178f) < EPSILON);
+  assert(fabs(r0[2] + 0.830127f) < EPSILON);
 
   printf("vec4 tests passed\n");
 }
@@ -350,7 +356,6 @@ void m4x3_tests() {
 void m4x4_tests() {
   m4x4 d0 = {{1,2,3,4}, {5,6,7,8}, {9,10,11,12}, {13,14,15,16}};
   vec4 d1 = {1, 2, 3, 4};
-  m4x4 d2 = {{1,0,0,0}, {0,1,0,0}, {0,0,1,0}, {0,0,0,1}};
   m4x4 r0;
   vec4 r1;
 

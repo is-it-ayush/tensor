@@ -4,14 +4,11 @@ LIBS=-lm
 
 all: test
 
-test: test.o libmave.o
-	$(CC) $(CFLAGS) -o test test.o libmave.o $(LIBS)
+test: test.o
+	$(CC) $(CFLAGS) -o test test.o $(LIBS)
 
 test.o:
 	$(CC) $(CFLAGS) -c ./tests/test.c $(LIBS)
 
-libmave.o:
-	$(CC) $(CFLAGS) -c ./libmave.c $(LIBS)
-
 clean:
-	rm -f test test.o libmave.o
+	rm -f test test.o
