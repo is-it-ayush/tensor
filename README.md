@@ -1,4 +1,4 @@
-# tenso.
+# tensor.
 
 tensor math library for c and c++ optimized for intel
 haswell and amd broadwell (2013+ processors) with sse

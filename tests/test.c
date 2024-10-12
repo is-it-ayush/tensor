@@ -3,8 +3,6 @@
 #include <math.h>
 #include <stdio.h>
 
-#define EPSILON 1e-6
-
 void vec2_tests() {
   vec2 d0 = {1.0f, 2.0f};
   vec2 r0;
@@ -52,10 +50,10 @@ void vec3_tests() {
   assert(r0[1] == 0.0f);
   assert(r0[2] == 0.0f);
 
-  vec3_scale(d0, d0, r0);
-  assert(r0[0] == 1.0f);
+  vec3_scale(d0, 2.0f, r0);
+  assert(r0[0] == 2.0f);
   assert(r0[1] == 4.0f);
-  assert(r0[2] == 9.0f);
+  assert(r0[2] == 6.0f);
 
   r1 = vec3_dot_mul(d0, d0);
   assert(r1 == 14.0f);
@@ -93,12 +91,6 @@ void vec4_tests() {
   assert(r0[2] == 0.0f);
   assert(r0[3] == 0.0f);
 
-  vec4_scale(d0, d0, r0);
-  assert(r0[0] == 1.0f);
-  assert(r0[1] == 4.0f);
-  assert(r0[2] == 9.0f);
-  assert(r0[3] == 16.0f);
-
   r1 = vec4_dot_mul(d0, d0);
   assert(r1 == 30.0f);
 
@@ -115,6 +107,18 @@ void vec4_tests() {
   assert(fabs(r0[0] - 10.0f) < EPSILON);
   assert(fabs(r0[1] - 8.562178f) < EPSILON);
   assert(fabs(r0[2] + 0.830127f) < EPSILON);
+
+  vec4_translate(d0, (vec3){1.0f, 0.0f, 0.0f}, r0);
+  assert(r0[0] == 1.0f);
+  assert(r0[1] == 2.0f);
+  assert(r0[2] == 3.0f);
+  assert(r0[3] == 5.0f);
+
+  vec4_scale(d0, (vec3){2.0f, 2.0f, 2.0f}, r0);
+  assert(r0[0] == 2.0f);
+  assert(r0[1] == 4.0f);
+  assert(r0[2] == 6.0f);
+  assert(r0[3] == 4.0f);
 
   printf("vec4 tests passed\n");
 }
@@ -356,6 +360,8 @@ void m4x3_tests() {
 void m4x4_tests() {
   m4x4 d0 = {{1,2,3,4}, {5,6,7,8}, {9,10,11,12}, {13,14,15,16}};
   vec4 d1 = {1, 2, 3, 4};
+  m4x4 d2 = {{1,2,3,4}, {5,6,7,8}, {9,10,11,12}, {13,14,15,16}};
+  m4x4 d3 = {{1,2,3,4}, {5,6,7,8}, {9,10,11,12}, {13,14,15,16}};
   m4x4 r0;
   vec4 r1;
 
@@ -396,6 +402,43 @@ void m4x4_tests() {
   assert(r0[3][1] == 484.0f);
   assert(r0[3][2] == 542.0f);
   assert(r0[3][3] == 600.0f);
+
+  m4x4_identity(r0);
+  for(int i = 0; i < 4; i++) {
+    for(int j = 0; j < 4; j++) {
+      if(i == j) {
+        assert(r0[i][j] == 1.0f);
+      } else {
+        assert(r0[i][j] == 0.0f);
+      }
+    }
+  }
+
+  m4x4_make_translate(d2, (vec3){1.0f, 0.0f, 0.0f});
+  assert(d2[3][0] == 14.0f);
+  assert(d2[3][1] == 16.0f);
+  assert(d2[3][2] == 18.0f);
+  assert(d2[3][3] == 20.0f);
+
+  m4x4_make_rotate(r0, (vec3){1.0,0.0,0.0}, 60.0f);
+  assert(fabs(r0[0][0] - 1.0f) < EPSILON);
+  assert(fabs(r0[1][1] - 0.5f) < EPSILON);
+  assert(fabs(r0[1][2] - 0.866025f) < EPSILON);
+  assert(fabs(r0[2][1] + 0.866025f) < EPSILON);
+  assert(fabs(r0[2][2] - 0.5f) < EPSILON);
+  assert(fabs(r0[3][3] - 1.0f) < EPSILON);
+
+  m4x4_make_scale(d3, (vec3){2.0f, 2.0f, 2.0f});
+  for(int i = 0; i < 4; i++) {
+    for(int j = 0; j < 4; j++) {
+      if (i == 3) {
+        assert(d3[i][j] == d0[i][j]);
+      }
+      else {
+        assert(d3[i][j] == 2.0f * d0[i][j]);
+      }
+    }
+  }
 
   printf("m4x4 tests passed\n");
 }
