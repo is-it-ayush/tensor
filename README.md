@@ -1,19 +1,21 @@
 ### tensor.
 
-tensor math library for c is optimized for intel haswell and
-amd broadwell (2013+ processors) with sse & avx instruction
-extensions. (except for avx512, since my cpu doesn't support it)
+header only tensor math library for c. optimized for intel haswell
+and amd broadwell (2013+ processors) with sse & avx instruction
+extensions. (except for avx512, since my cpu doesn't support it
+but feel free to contribute if u want it.)
 
 > the affine transformations such as `m4x4_make_rotate`,
 > `m4x4_make_translate`, `m4x4_make_scale`, `m4x4_make_perspective`
 > are written with opengl in mind i.e. column-major order so
-> remember that!
+> remember that! you'll have to transpose the matrix if you're
+> using row-major order (like in vulkan, directx etc.)
 
 ### usage.
 
 ```c
 #define TENSOR_IMPLEMENTATION
-#include "./include/tensor.h"
+#include "./include/tensor.h" // or whereever you put it.
 
 int main() {
     // example usage.

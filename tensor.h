@@ -149,6 +149,16 @@ T_SCOPE float vec3_mag(vec3 a);
  * Normalizes a vector `a` and stores the result in `r`.
  */
 T_SCOPE void vec3_normalize(vec3 a, vec3 r);
+/*
+ * Calculates the maximum between `a` and `b` and stores
+ * the result in `r`.
+ */
+T_SCOPE void vec3_max(vec3 a, vec3 b, vec3 r);
+/*
+ * Calculates the minimum between `a` and `b` and stores
+ * the result in `r`.
+ */
+T_SCOPE void vec3_min(vec3 a, vec3 b, vec3 r);
 
 /**
  * Adds two vectors `a` and `b` and stores the result in `r`.
@@ -191,6 +201,7 @@ T_SCOPE void vec4_translate(vec4 a, vec3 by, vec4 r);
  * axes.
  */
 T_SCOPE void vec4_scale(vec4 a, vec3 by, vec4 r);
+
 
 /**
  * Adds two 2x2 matrices `a` and `b` and stores the resulting 2x2 matrix in `r`.
@@ -276,6 +287,15 @@ T_SCOPE void m3x3_mul(m3x3 a, m3x3 b, m3x3 r);
  * vector in `r`.
  */
 T_SCOPE void m3x3_vec3_mul(m3x3 a, vec3 b, vec3 r);
+/*
+ * Calculates the determinant of a 3x3 matrix `a`.
+ */
+T_SCOPE float m3x3_det(m3x3 a);
+/**
+ * Calculate the matrix of minors of a 3x3 matrix `a` and stores the result in
+ * `r`.
+ */
+T_SCOPE void m3x3_minor(m3x3 a, m3x3 r);
 
 /**
  * Adds two 3x4 matrices `a` and `b` and stores the resulting 3x4 matrix in `r`.
@@ -336,6 +356,14 @@ T_SCOPE void m4x4_sub(m4x4 a, m4x4 b, m4x4 r);
  * in `r`.
  */
 T_SCOPE void m4x4_mul(m4x4 a, m4x4 b, m4x4 r);
+/*
+ * Calculates the determinant of a 4x4 matrix `a`.
+ */
+T_SCOPE float m4x4_det(m4x4 a);
+/*
+ * Calculates the inverse of a 4x4 matrix `a` and stores the result in `r`.
+ */
+T_SCOPE void m4x4_inverse(m4x4 a, m4x4 r);
 /**
  * Multiplies a 4x4 matrix `a` and a 4D vector `b` and stores the resulting 4D
  * vector in `r`.
@@ -636,6 +664,24 @@ T_SCOPE void vec3_normalize(vec3 a, vec3 r) {
       )
   );
 }
+T_SCOPE void vec3_max(vec3 a, vec3 b, vec3 r) {
+  _mm_maskstore_ps(
+      r, _mm_set_epi32(0, -1, -1, -1),
+      _mm_max_ps(
+          _mm_maskload_ps(a, _mm_set_epi32(0, -1, -1, -1)),
+          _mm_maskload_ps(b, _mm_set_epi32(0, -1, -1, -1))
+      )
+  );
+}
+T_SCOPE void vec3_min(vec3 a, vec3 b, vec3 r) {
+  _mm_maskstore_ps(
+      r, _mm_set_epi32(0, -1, -1, -1),
+      _mm_min_ps(
+          _mm_maskload_ps(a, _mm_set_epi32(0, -1, -1, -1)),
+          _mm_maskload_ps(b, _mm_set_epi32(0, -1, -1, -1))
+      )
+  );
+}
 
 T_SCOPE void vec4_add(vec4 a, vec4 b, vec4 r) {
   _mm_store_ps(r, _mm_add_ps(_mm_load_ps(a), _mm_load_ps(b)));
@@ -853,6 +899,66 @@ T_SCOPE void m3x3_vec3_mul(m3x3 a, vec3 b, vec3 r) {
   x4 = _mm_blend_ps(x1, x2, 0b0010);
   x4 = _mm_blend_ps(x4, x3, 0b0100);
   _mm_maskstore_ps(r, _mm_set_epi32(0, -1, -1, -1), x4);
+}
+T_SCOPE float m3x3_det(m3x3 a) {
+  // a b c
+  // d e f
+  // g h i
+
+  // a(ei-fh) - b(di-fg) + c(dh-eg)
+  __m128 x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10;
+  x0 = _mm_maskload_ps(a[0], _mm_set_epi32(0, -1, -1, -1));     // 0 c b a
+  x1 = _mm_maskload_ps(a[0] + 3, _mm_set_epi32(0, -1, -1, -1)); // 0 f e d
+  x2 = _mm_maskload_ps(a[0] + 6, _mm_set_epi32(0, -1, -1, -1)); // 0 i h g
+
+  x3 = _mm_permutevar_ps(x2, _mm_set_epi32(3, 1, 2, 0));        // 0 h i g
+  x4 = _mm_permutevar_ps(x2, _mm_set_epi32(3, 0, 1, 2));        // 0 g h i
+  x5 = _mm_permutevar_ps(x2, _mm_set_epi32(3, 2, 0, 1));        // 0 i g h
+  x6 = _mm_dp_ps(x1, _mm_xor_ps(x3, _mm_setr_ps(0.0f, 0.0f, -0.0f, 0.0f)), 0b01100001); // ei-fh
+  x7 = _mm_dp_ps(x1, _mm_xor_ps(x4, _mm_setr_ps(0.0f, 0.0f, -0.0f, 0.0f)), 0b01010010); // di-fg
+  x8 = _mm_dp_ps(x1, _mm_xor_ps(x5, _mm_setr_ps(0.0f, -0.0f, 0.0f, 0.0f)), 0b00110100); // dh-eg
+  x9 = _mm_blend_ps(_mm_blend_ps(x6, x7, 0b0010), x8, 0b0100); // 0 dh-eg di-fg ei-fh
+
+  x10 = _mm_xor_ps(_mm_mul_ps(x9, x0), _mm_setr_ps(0.0f, -0.0f, 0.0f, -0.0f));
+  x10 = _mm_hadd_ps(x10, x10);
+  x10 = _mm_hadd_ps(x10, x10);
+  return _mm_cvtss_f32(x10);
+}
+T_SCOPE void m3x3_minor(m3x3 a, m3x3 r) {
+  // a b c       ei-fh di-fg dh-eg
+  // d e f   =   bi-ch ai-cg ah-bg
+  // g h i       bf-ce af-cd ae-bd
+
+  __m128 x0, x1, x2, x3, x4, x5, x6, x7, x8, x9;
+  x0 = _mm_maskload_ps(a[0], _mm_set_epi32(0, -1, -1, -1));     // 0 c b a
+  x1 = _mm_maskload_ps(a[0] + 3, _mm_set_epi32(0, -1, -1, -1)); // 0 f e d
+  x2 = _mm_maskload_ps(a[0] + 6, _mm_set_epi32(0, -1, -1, -1)); // 0 i h g
+
+  x3 = _mm_permutevar_ps(x2, _mm_set_epi32(3, 1, 2, 0));        // 0 h i g
+  x4 = _mm_permutevar_ps(x2, _mm_set_epi32(3, 0, 1, 2));        // 0 g h i
+  x5 = _mm_permutevar_ps(x2, _mm_set_epi32(3, 2, 0, 1));        // 0 i g h
+
+  x6 = _mm_dp_ps(x1, _mm_xor_ps(x3, _mm_setr_ps(0.0f, 0.0f, -0.0f, 0.0f)), 0b01100001); // ei-fh
+  x7 = _mm_dp_ps(x1, _mm_xor_ps(x4, _mm_setr_ps(0.0f, 0.0f, -0.0f, 0.0f)), 0b01010010); // di-fg
+  x8 = _mm_dp_ps(x1, _mm_xor_ps(x5, _mm_setr_ps(0.0f, -0.0f, 0.0f, 0.0f)), 0b00110100); // dh-eg
+  x9 = _mm_blend_ps(_mm_blend_ps(x6, x7, 0b0010), x8, 0b0100); // ei-fh di-fg dh-eg
+  _mm_maskstore_ps(r[0], _mm_set_epi32(0, -1, -1, -1), x9);
+
+  x6 = _mm_dp_ps(x0, _mm_xor_ps(x3, _mm_setr_ps(0.0f, 0.0f, -0.0f, 0.0f)), 0b01100001); // bi-ch
+  x7 = _mm_dp_ps(x0, _mm_xor_ps(x4, _mm_setr_ps(0.0f, 0.0f, -0.0f, 0.0f)), 0b01010010); // ai-cg
+  x8 = _mm_dp_ps(x0, _mm_xor_ps(x5, _mm_setr_ps(0.0f, -0.0f, 0.0f, 0.0f)), 0b00110100); // ah-bg
+  x9 = _mm_blend_ps(_mm_blend_ps(x6, x7, 0b0010), x8, 0b0100); // bi-ch ai-cg ah-bg
+  _mm_maskstore_ps(r[1], _mm_set_epi32(0, -1, -1, -1), x9);
+
+  x3 = _mm_permutevar_ps(x1, _mm_set_epi32(3, 1, 2, 0));        // 0 e f d
+  x4 = _mm_permutevar_ps(x1, _mm_set_epi32(3, 0, 1, 2));        // 0 d e f
+  x5 = _mm_permutevar_ps(x1, _mm_set_epi32(3, 2, 0, 1));        // 0 f d e
+
+  x6 = _mm_dp_ps(x0, _mm_xor_ps(x3, _mm_setr_ps(0.0f, 0.0f, -0.0f, 0.0f)), 0b01100001); // bf-ce
+  x7 = _mm_dp_ps(x0, _mm_xor_ps(x4, _mm_setr_ps(0.0f, 0.0f, -0.0f, 0.0f)), 0b01010010); // af-cd
+  x8 = _mm_dp_ps(x0, _mm_xor_ps(x5, _mm_setr_ps(0.0f, -0.0f, 0.0f, 0.0f)), 0b00110100); // ae-bd
+  x9 = _mm_blend_ps(_mm_blend_ps(x6, x7, 0b0010), x8, 0b0100); // ei-fh di-fg dh-eg
+  _mm_maskstore_ps(r[2], _mm_set_epi32(0, -1, -1, -1), x9);
 }
 T_SCOPE void m3x3_mul(m3x3 a, m3x3 b, m3x3 r) {
   // a b c     j k l     aj+bm+cp ak+bn+cq al+bo+cr
@@ -1088,6 +1194,56 @@ T_SCOPE void m4x4_mul(m4x4 a, m4x4 b, m4x4 r) {
     );
     _mm_store_ps(r[i], x5);
   }
+}
+T_SCOPE float m4x4_det(m4x4 a) {
+  // a b c d   00 01 02 03
+  // e f g h   10 11 12 13
+  // i j k l   20 21 22 23
+  // m n o p   30 31 32 33
+
+  // worst performing method...cause i'm stupid
+  float a00 = a[0][0] * m3x3_det((m3x3){{a[1][1], a[1][2], a[1][3]}, {a[2][1], a[2][2], a[2][3]}, {a[3][1], a[3][2], a[3][3]}});
+  float a01 = a[0][1] * m3x3_det((m3x3){{a[1][0], a[1][2], a[1][3]}, {a[2][0], a[2][2], a[2][3]}, {a[3][0], a[3][2], a[3][3]}});
+  float a02 = a[0][2] * m3x3_det((m3x3){{a[1][0], a[1][1], a[1][3]}, {a[2][0], a[2][1], a[2][3]}, {a[3][0], a[3][1], a[3][3]}});
+  float a03 = a[0][3] * m3x3_det((m3x3){{a[1][0], a[1][1], a[1][2]}, {a[2][0], a[2][1], a[2][2]}, {a[3][0], a[3][1], a[3][2]}});
+  return a00 - a01 + a02 - a03;
+}
+T_SCOPE void m4x4_inverse(m4x4 a, m4x4 r) {
+  // a b c d   00 01 02 03
+  // e f g h   10 11 12 13
+  // i j k l   20 21 22 23
+  // m n o p   30 31 32 33
+
+  // matrix of minors (adjusted for cofactor)
+  m4x4 t;
+  t[0][0] = m3x3_det((m3x3){{a[1][1], a[1][2], a[1][3]}, {a[2][1], a[2][2], a[2][3]}, {a[3][1], a[3][2], a[3][3]}});
+  t[0][1] = -m3x3_det((m3x3){{a[1][0], a[1][2], a[1][3]}, {a[2][0], a[2][2], a[2][3]}, {a[3][0], a[3][2], a[3][3]}});
+  t[0][2] = m3x3_det((m3x3){{a[1][0], a[1][1], a[1][3]}, {a[2][0], a[2][1], a[2][3]}, {a[3][0], a[3][1], a[3][3]}});
+  t[0][3] = -m3x3_det((m3x3){{a[1][0], a[1][1], a[1][2]}, {a[2][0], a[2][1], a[2][2]}, {a[3][0], a[3][1], a[3][2]}});
+
+  t[1][0] = -m3x3_det((m3x3){{a[0][1], a[0][2], a[0][3]}, {a[2][1], a[2][2], a[2][3]}, {a[3][1], a[3][2], a[3][3]}});
+  t[1][1] = m3x3_det((m3x3){{a[0][0], a[0][2], a[0][3]}, {a[2][0], a[2][2], a[2][3]}, {a[3][0], a[3][2], a[3][3]}});
+  t[1][2] = -m3x3_det((m3x3){{a[0][0], a[0][1], a[0][3]}, {a[2][0], a[2][1], a[2][3]}, {a[3][0], a[3][1], a[3][3]}});
+  t[1][3] = m3x3_det((m3x3){{a[0][0], a[0][1], a[0][2]}, {a[2][0], a[2][1], a[2][2]}, {a[3][0], a[3][1], a[3][2]}});
+
+  t[2][0] = m3x3_det((m3x3){{a[0][1], a[0][2], a[0][3]}, {a[1][1], a[1][2], a[1][3]}, {a[3][1], a[3][2], a[3][3]}});
+  t[2][1] = -m3x3_det((m3x3){{a[0][0], a[0][2], a[0][3]}, {a[1][0], a[1][2], a[1][3]}, {a[3][0], a[3][2], a[3][3]}});
+  t[2][2] = m3x3_det((m3x3){{a[0][0], a[0][1], a[0][3]}, {a[1][0], a[1][1], a[1][3]}, {a[3][0], a[3][1], a[3][3]}});
+  t[2][3] = -m3x3_det((m3x3){{a[0][0], a[0][1], a[0][2]}, {a[1][0], a[1][1], a[1][2]}, {a[3][0], a[3][1], a[3][2]}});
+
+  t[3][0] = -m3x3_det((m3x3){{a[0][1], a[0][2], a[0][3]}, {a[1][1], a[1][2], a[1][3]}, {a[2][1], a[2][2], a[2][3]}});
+  t[3][1] = m3x3_det((m3x3){{a[0][0], a[0][2], a[0][3]}, {a[1][0], a[1][2], a[1][3]}, {a[2][0], a[2][2], a[2][3]}});
+  t[3][2] = -m3x3_det((m3x3){{a[0][0], a[0][1], a[0][3]}, {a[1][0], a[1][1], a[1][3]}, {a[2][0], a[2][1], a[2][3]}});
+  t[3][3] = m3x3_det((m3x3){{a[0][0], a[0][1], a[0][2]}, {a[1][0], a[1][1], a[1][2]}, {a[2][0], a[2][1], a[2][2]}});
+
+  m4x4_transpose(t, r); // adjugate
+
+  float det = _mm_cvtss_f32(_mm_dp_ps(
+      _mm_load_ps(a[0]), _mm_load_ps(t[0]), 0b11110001
+  ));
+  __m256 x0 = _mm256_set1_ps(1.0f / det);
+  _mm256_store_ps(r[0], _mm256_mul_ps(_mm256_load_ps(r[0]), x0));
+  _mm256_store_ps(r[0] + 8, _mm256_mul_ps(_mm256_load_ps(r[0] + 8), x0));
 }
 T_SCOPE void m4x4_make_rotate(m4x4 a, vec3 axis, float angle) {
   vec3 xn, vc, vs;

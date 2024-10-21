@@ -241,6 +241,7 @@ void m3x3_tests() {
   vec3 d1 = {1, 2, 3};
   m3x3 r0;
   vec3 r1;
+  float r2;
 
   m3x3_add(d0, d0, r0);
   for (int i = 0; i < 3; i++) {
@@ -271,6 +272,20 @@ void m3x3_tests() {
   assert(r0[2][0] == 102.0f);
   assert(r0[2][1] == 126.0f);
   assert(r0[2][2] == 150.0f);
+
+  r2 = m3x3_det(d0);
+  assert(r2 == 0.0f);
+
+  m3x3_minor(d0, r0);
+  assert(r0[0][0] == -3.0f);
+  assert(r0[0][1] == -6.0f);
+  assert(r0[0][2] == -3.0f);
+  assert(r0[1][0] == -6.0f);
+  assert(r0[1][1] == -12.0f);
+  assert(r0[1][2] == -6.0f);
+  assert(r0[2][0] == -3.0f);
+  assert(r0[2][1] == -6.0f);
+  assert(r0[2][2] == -3.0f);
 
   printf("m3x3 tests passed\n");
 }
@@ -362,8 +377,11 @@ void m4x4_tests() {
   vec4 d1 = {1, 2, 3, 4};
   m4x4 d2 = {{1,2,3,4}, {5,6,7,8}, {9,10,11,12}, {13,14,15,16}};
   m4x4 d3 = {{1,2,3,4}, {5,6,7,8}, {9,10,11,12}, {13,14,15,16}};
+  m4x4 d4 = {{1,2,3,4}, {5,1,7,8}, {9,10,1,12}, {13,14,15,1}};
   m4x4 r0;
   vec4 r1;
+  float r2;
+  m4x4 r3;
 
   m4x4_add(d0, d0, r0);
   for (int i = 0; i < 4; i++) {
@@ -436,6 +454,21 @@ void m4x4_tests() {
       }
       else {
         assert(d3[i][j] == 2.0f * d0[i][j]);
+      }
+    }
+  }
+
+  r2 = m4x4_det(d0);
+  assert(r2 == 0.0f);
+
+  m4x4_inverse(d4, r0);
+  m4x4_mul(d4, r0, r3);
+  for(int i = 0; i < 4; i++) {
+    for(int j = 0; j < 4; j++) {
+      if(i == j) {
+        assert(fabs(r3[i][j] - 1.0f) < EPSILON);
+      } else {
+        assert(fabs(r3[i][j] - 0.0f) < EPSILON);
       }
     }
   }
