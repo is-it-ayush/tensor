@@ -432,15 +432,16 @@ T_SCOPE void m2x2_transpose(m2x2 a, m2x2 r);
 T_SCOPE void m3x3_transpose(m3x3 a, m3x3 b);
 T_SCOPE void m4x4_transpose(m4x4 a, m4x4 b);
 
-#define TENSOR_IMPLEMENTATION // comment this line to include the
-// implementation
-#ifdef TENSOR_IMPLEMENTATION
+#define TENSOR_IMPLEMENTATION // COMMENT ME OUT TO USE AS A HEADER. :)
 
 /***
  * ----
  * Implementation
  * ----
  */
+
+#ifdef TENSOR_IMPLEMENTATION
+
 
 T_SCOPE void print_vec2(vec2 v) {
   printf("[%f, %f]\n", v[0], v[1]);
